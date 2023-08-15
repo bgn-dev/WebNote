@@ -1,0 +1,25 @@
+.notes {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1rem;
+    padding: 1rem;
+}
+
+.notes_container {
+    flex: 0 1 calc(25% - 1rem);
+    /* Adjust the width for 4 notes per row */
+    display: flex;
+    justify-content: center;
+}
+
+.note {
+    background-color: white;
+    border-radius: 0.25rem;
+    box-shadow: 0 20px 40px -14px rgba(0, 0, 0, 0.25);
+    width: 100%;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
