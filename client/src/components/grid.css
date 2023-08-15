@@ -1,3 +1,28 @@
+.grid_title {
+    font-size: 36px;
+    padding-top: 1rem;
+    text-align: center;
+    margin-top: -25%;
+}
+
+.new_note {
+    display: flex;
+    justify-content: center;
+    margin-top: 1rem;
+
+}
+
+.new_note button {
+    background-color: white;
+    border-radius: 0.25rem;
+    box-shadow: 0 20px 40px -14px rgba(0, 0, 0, 0.25);
+    border: none;
+}
+
+.new_note i {
+    font-size: 25px;
+}
+
 .notes {
     display: flex;
     flex-wrap: wrap;
@@ -10,16 +35,25 @@
     flex: 0 1 calc(25% - 1rem);
     /* Adjust the width for 4 notes per row */
     display: flex;
-    justify-content: center;
-}
-
-.note {
+    justify-content: space-between;
     background-color: white;
     border-radius: 0.25rem;
     box-shadow: 0 20px 40px -14px rgba(0, 0, 0, 0.25);
-    width: 100%;
+}
+
+.note {
     padding: 1rem;
+}
+
+.note p:hover {
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.notes_container i {
+    font-size: 25px;
     display: flex;
-    flex-direction: column;
-    overflow: hidden;
+    align-items: center;
+    padding: 10px;
+    cursor: pointer;
 }

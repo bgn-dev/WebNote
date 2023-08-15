@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react'
-import { collection, onSnapshot, query, where } from "@firebase/firestore"
+import { collection, onSnapshot, query, where, deleteDoc, doc } from "@firebase/firestore"
 import { firestore } from '../database/config';
 import { useNavigate } from "react-router-dom";
 
 import './grid.css'
+import { MdOutlineDeleteForever } from 'react-icons/md';
+import { MdOutlineNoteAdd } from 'react-icons/md';
 
 export default function Grid() {
     const navigate = useNavigate();
@@ -31,21 +33,48 @@ export default function Grid() {
         return () => unsubscribe();
     }, []);
 
+    const handleDelete = async (ID) => {
+        try {
+            // Create a reference to the document using its ID
+            const noteRef = doc(firestore, 'notes', ID);
+
+            // Delete the document
+            await deleteDoc(noteRef);
+
+            console.log('Document deleted successfully.');
+        } catch (error) {
+            console.error('Error deleting document:', error);
+        }
+    };
+
     const handleNote = (ID, title) => {
         navigate("/note", { state: { noteID: ID, noteTitle: title } });
     }
 
+    const handleNewNote = () => {
+
+    }
+
     return (
-        <div className="notes">
-            {notes.map((note) => (
-                <div className="notes_container" key={note.id}>
-                    <div className="note" onClick={() => {
-                        handleNote(note.id, note.title);
-                    }}>
-                        <p>{note.id}</p>
+        <div>
+            <h1 className="grid_title">Your Notes</h1>
+            <div className="new_note">
+                <button onClick={() => handleNewNote()}>
+                    <i> <MdOutlineNoteAdd /> </i>
+                </button>
+            </div>
+            <div className="notes">
+                {notes.map((note) => (
+                    <div className="notes_container" key={note.id}>
+                        <div className="note" onClick={() => {
+                            handleNote(note.id, note.title);
+                        }}>
+                            <p>{note.id}</p>
+                        </div>
+                        <i onClick={() => handleDelete(note.id)}> <MdOutlineDeleteForever /> </i>
                     </div>
-                </div>
-            ))}
+                ))}
+            </div>
         </div>
     );
 }
