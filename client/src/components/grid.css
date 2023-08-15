@@ -5,21 +5,35 @@
     margin-top: -25%;
 }
 
-.new_note {
+.sign_out {
+    position: fixed;
+    top: 20px;
+    right: 25px;
+    font-size: 25px;
+    cursor: pointer;
+}
+
+.sign_out:hover {
+    color: rgb(255, 79, 79);
+}
+
+.new_note_container {
     display: flex;
     justify-content: center;
     margin-top: 1rem;
 
 }
 
-.new_note button {
+.new_note_container button {
     background-color: white;
     border-radius: 0.25rem;
     box-shadow: 0 20px 40px -14px rgba(0, 0, 0, 0.25);
     border: none;
+    justify-content: center;
+    padding: 10px;
 }
 
-.new_note i {
+.new_note_container i {
     font-size: 25px;
 }
 
@@ -36,7 +50,7 @@
     /* Adjust the width for 4 notes per row */
     display: flex;
     justify-content: space-between;
-    background-color: white;
+    background-color: #fff;
     border-radius: 0.25rem;
     box-shadow: 0 20px 40px -14px rgba(0, 0, 0, 0.25);
 }
@@ -55,5 +69,25 @@
     display: flex;
     align-items: center;
     padding: 10px;
+    cursor: pointer;
+}
+
+.new_title_container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #fff;
+    padding: 1rem;
+    margin: auto 1.5rem;
+    border-radius: 0.25rem;
+    box-shadow: 0 20px 40px -14px rgba(0, 0, 0, 0.25);
+}
+
+.new_title_container input {
+    flex: 1;
+}
+
+.new_title_container i {
+    font-size: 20px;
     cursor: pointer;
 }
