@@ -1,17 +1,22 @@
 import React, { useEffect, useState } from 'react'
-import { collection, onSnapshot, query, where, deleteDoc, doc } from "@firebase/firestore"
+import { collection, onSnapshot, query, where, deleteDoc, doc, addDoc } from "@firebase/firestore"
 import { firestore } from '../database/config';
 import { useNavigate } from "react-router-dom";
 
 import './grid.css'
 import { MdOutlineDeleteForever } from 'react-icons/md';
 import { MdOutlineNoteAdd } from 'react-icons/md';
+import { BsFillFileEarmarkArrowUpFill } from 'react-icons/bs';
+import { PiSignOutBold } from 'react-icons/pi';
+
+
 
 export default function Grid() {
     const navigate = useNavigate();
 
     const [notes, setNotes] = useState([]); // Use state to manage the notes array
-    const [noteID, setNoteID] = useState("")
+    const [noteTitle, setNoteTitle] = useState("");
+    const [toggle, setToggle] = useState(true);
 
     const currentUser = localStorage.getItem("currentUser");
     const colRef = collection(firestore, "notes");
@@ -51,31 +56,63 @@ export default function Grid() {
         navigate("/note", { state: { noteID: ID, noteTitle: title } });
     }
 
-    const handleNewNote = () => {
-
+    function handleNewNote() {
+        setToggle(!setToggle)
     }
 
-    return (
-        <div>
-            <h1 className="grid_title">Your Notes</h1>
-            <div className="new_note">
-                <button onClick={() => handleNewNote()}>
-                    <i> <MdOutlineNoteAdd /> </i>
-                </button>
-            </div>
-            <div className="notes">
-                {notes.map((note) => (
-                    <div className="notes_container" key={note.id}>
-                        <div className="note" onClick={() => {
-                            handleNote(note.id, note.title);
-                        }}>
-                            <p>{note.id}</p>
-                        </div>
-                        <i onClick={() => handleDelete(note.id)}> <MdOutlineDeleteForever /> </i>
-                    </div>
-                ))}
-            </div>
+    function handleInputChange(e) {
+        setNoteTitle(e.target.value);
+    }
+
+    const handleNewUpload = async (e) => {
+        const fetchD = async () => {
+            const docRef = await addDoc(colRef, {
+                user: currentUser,
+                title: noteTitle,
+            });
+            console.log("Document written with ID: ", docRef.id);
+            handleNote(docRef.id, noteTitle);
+        }
+        const result = fetchD().catch(console.error);
+
+
+        //  log the result
+        console.log(result);
+    }
+
+    function handleSignOut() {
+        localStorage.removeItem("currentUser");
+        navigate("/");
+    }
+
+return (
+    <div>
+        <h1 className="grid_title">Your Notes</h1>
+        <i className="sign_out" onClick={() => handleSignOut()}> <PiSignOutBold /> </i>
+        <div className="new_note_container">
+            {toggle && <button onClick={() => handleNewNote()}>
+                <i> <MdOutlineNoteAdd /> </i>
+            </button>}
         </div>
-    );
+        {!toggle &&
+            <div className="new_title_container">
+                <input type="token" value={noteTitle} placeholder="Title for your new note" onChange={(e) => handleInputChange(e)} />
+                <i onClick={() => handleNewUpload()}> <BsFillFileEarmarkArrowUpFill /> </i>
+            </div>
+        }
+        <div className="notes">
+            {notes.map((note) => (
+                <div className="notes_container" key={note.id}>
+                    <div className="note" onClick={() => {
+                        handleNote(note.id, note.title);
+                    }}>
+                        <p>{note.title}</p>
+                    </div>
+                    <i onClick={() => handleDelete(note.id)}> <MdOutlineDeleteForever /> </i>
+                </div>
+            ))}
+        </div>
+    </div>
+);
 }
 
