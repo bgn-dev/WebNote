@@ -1,7 +1,11 @@
-import React from 'react'
+import React from 'react';
 import Axios from 'axios';
 import { useState, useEffect } from 'react';
 import { useNavigate } from "react-router-dom";
+
+import './login.css';
+
+import { MdOutlineToken } from 'react-icons/md';
 
 export default function Login() {
     const navigate = useNavigate();
@@ -63,19 +67,23 @@ export default function Login() {
             });
     };
 
+    function handleInputChange(e) {
+        setToken(e.target.value)
+        setLog_Button("Sign In")
+    }
+
     return (
-        <div>
-            <h1>Login</h1>
-            <br></br>
-            <div className="verification-container">
-                <input type="token" value={token} placeholder="YOUR TOKEN" onChange={(e) => setToken(e.target.value)} />
+        <div className="login_container">
+            <h1>WebNote</h1>
+            <div className="input_verification">
+                <input type="token" value={token} placeholder="Token" onChange={(e) => handleInputChange(e)} />
+                <i><MdOutlineToken /></i>
             </div>
-            <br></br>
-            <button className="verificate_button" onClick={handleLogButton}>{log_button}</button>
-            <br></br>
-            <a>Don't have a token yet?</a>
-            <br></br>
-            <a onClick={generateToken}>Generate your token.</a>
+            <div className="token_container">
+                <a>Don't have a token yet?</a>
+                <a className="generate_token" onClick={generateToken}>Generate your token.</a>
+            </div>
+            <button className="verificate_btn" onClick={handleLogButton}>{log_button}</button>
         </div>
     )
 }

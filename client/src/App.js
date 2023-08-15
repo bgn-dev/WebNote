@@ -10,13 +10,13 @@ function App() {
 
   return (
     <div className="App">
-      <header className="App-header">
+      <div className="App-Header">
         <Routes>
           <Route path="/" element={<Login />} />
           <Route path="/grid" element={<Grid />} />
           <Route path="/note" element={<Note />} />
         </Routes>
-      </header>
+      </div>
     </div>
   );
 }

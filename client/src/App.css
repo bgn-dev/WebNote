@@ -3,16 +3,42 @@
 }
 
 .App-header {
-  background-color: whitesmoke;
+  background-image: linear-gradient(to right, #d3cce3, #e9e4f0);
   min-height: 100vh;
-  display: block;
+  display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   font-size: calc(10px + 2vmin);
-  color: black;
 }
 
-.App-link {
-  color: #61dafb;
+label,
+input,
+button {
+  padding: 0.2em;
+  margin: 0.1em 0.2em;
+  /* the following ensures they're all using the same box-model for rendering */
+  -moz-box-sizing: border-box;
+  /* or `border-box` */
+  -webkit-box-sizing: border-box;
+  box-sizing: border-box;
+}
+
+button {
+  flex-shrink: 0;
+  /* Prevent the button from shrinking */
+  background-color: white;
+  border-radius: 2px;
+  border: 1px solid #081F2D;
+  color: black;
+  font-size: 15px;
+  padding: 10px 25px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+/* click 'animation' */
+button:active {
+  position: relative;
+  top: 2px;
 }
