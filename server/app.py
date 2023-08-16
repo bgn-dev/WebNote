@@ -4,7 +4,7 @@ import os, secrets, string
 import firebase_admin
 from firebase_admin import credentials, firestore
 
-cred = credentials.Certificate(os.getcwd() + "/key.json")
+cred = credentials.Certificate(os.getcwd() + "/server/key.json")
 #cred = credentials.Certificate('key.json') # for deployment
 firebase_admin.initialize_app(cred)
 db = firestore.client()
