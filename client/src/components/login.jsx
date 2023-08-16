@@ -22,7 +22,7 @@ export default function Login() {
     // initiate the post request via axios for the login
     const handleSignUp = () => {
         //Axios.post("http://localhost:9999/registrate", {
-        Axios.post("https://web-note-dcc55f7bf262.herokuapp.com/registrate", {
+        Axios.post("https://neat-note-4478e343a4f5.herokuapp.com/registrate", {
             id: token,
         })
             .then((response) => {
@@ -42,7 +42,7 @@ export default function Login() {
             console.log("Token does not have the norms.");
             return;
         }
-        Axios.post("https://web-note-dcc55f7bf262.herokuapp.com/authenticate", {
+        Axios.post("https://neat-note-4478e343a4f5.herokuapp.com/authenticate", {
             id: token,
         })
             .then((response) => {
@@ -57,7 +57,7 @@ export default function Login() {
     }
 
     const generateToken = () => {
-        Axios.post("https://web-note-dcc55f7bf262.herokuapp.com/generateToken", {
+        Axios.post("https://neat-note-4478e343a4f5.herokuapp.com/generateToken", {
             id: token,
         })
             .then((response) => {
