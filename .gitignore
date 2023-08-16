@@ -21,7 +21,7 @@ node_modules/
 
 client/dist/
 server/venv/
-server/key.json
+#server/key.json
 
 
 *.log
