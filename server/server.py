@@ -11,7 +11,7 @@ db = firestore.client()
 
 app = Flask(__name__)
 cors = CORS() 
-port = 8080
+port = 9999
 
 @app.route('/registrate', methods=['POST'])
 @cross_origin()
