@@ -4,13 +4,13 @@ import os, secrets, string
 import firebase_admin
 from firebase_admin import credentials, firestore
 
-cred = credentials.Certificate(os.getcwd() + "/server/key.json")
-#cred = credentials.Certificate('key.json') # for deployment
+#cred = credentials.Certificate(os.getcwd() + "/key.json")
+cred = credentials.Certificate(os.getcwd() + "/server/key.json")# for deployment
 firebase_admin.initialize_app(cred)
 db = firestore.client()
 
 
-app = Flask(__name__, static_url_path='', static_folder='../client/build')
+app = Flask(__name__, static_url_path='', static_folder=os.getcwd() + "client/build")
 #CORS(app)
 #cors = CORS() # comment out in deployment
 #port = 9999
