@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 # from flask_cors import CORS, cross_origin # comment out in deployment
 import os, secrets, string
 import firebase_admin
@@ -49,5 +49,6 @@ def generateToken():
     else:
         return jsonify(token)
 
-if __name__ == '__main__':
-    app.run(host='localhost', port=port, debug=True)
+#if __name__ == '__main__':
+    #app.run(host='localhost', port=port, debug=True)
+    
