@@ -15,8 +15,6 @@ app = Flask(__name__, static_url_path='', static_folder='../client/build')
 port = 9999
 
 @app.route("/", defaults={'path':''})
-def serve(path):
-    return send_from_directory(app.static_folder,'index.html')
 
 @app.route('/registrate', methods=['POST'])
 #@cross_origin() # comment out in deployment
@@ -49,5 +47,5 @@ def generateToken():
     else:
         return jsonify(token)
 
-if __name__ == '__main__':
-    app.run(host='localhost', port=port, debug=True)
+#if __name__ == '__main__':
+#    app.run(host='localhost', port=port, debug=True)
