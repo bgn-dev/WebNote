@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify, send_from_directory
-# from flask_cors import CORS, cross_origin # comment out in deployment
+from flask_cors import CORS, cross_origin # comment out in deployment
 import os, secrets, string
 import firebase_admin
 from firebase_admin import credentials, firestore
@@ -11,7 +11,7 @@ db = firestore.client()
 
 
 app = Flask(__name__, static_url_path='', static_folder=os.getcwd() + "client/build")
-#CORS(app)
+CORS(app)
 #cors = CORS() # comment out in deployment
 #port = 9999
 
