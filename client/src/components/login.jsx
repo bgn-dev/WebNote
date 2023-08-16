@@ -1,6 +1,6 @@
 import React from 'react';
 import Axios from 'axios';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from "react-router-dom";
 
 import './login.css';
@@ -11,7 +11,6 @@ export default function Login() {
     const navigate = useNavigate();
     const [token, setToken] = useState("");
     const [log_button, setLog_Button] = useState("Sign In")
-    const [changeState, setChangeState] = useState(false);
 
     const handleLogButton = () => {
         if (log_button === "Sign In") {

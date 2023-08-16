@@ -12,7 +12,7 @@ db = firestore.client()
 app = Flask(__name__, static_url_path='', static_folder='../client/build')
 #CORS(app)
 #cors = CORS() # comment out in deployment
-port = 9999
+#port = 9999
 
 @app.route("/", defaults={'path':''})
 def serve(path):
