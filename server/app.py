@@ -10,14 +10,14 @@ firebase_admin.initialize_app(cred)
 db = firestore.client()
 
 
-app = Flask(__name__, static_url_path='', static_folder=os.getcwd() + "client/build")
+app = Flask(__name__, static_url_path='/', static_folder= "../client/build") # static folder is the frontend, even it's not static
 CORS(app)
 cors = CORS() # comment out in deployment
-#port = 9999
+port = 9999
 
 @app.route("/", defaults={'path':''})
 def serve(path):
-    return send_from_directory(app.static_folder,'index.html')
+    return send_from_directory(app.static_folder,'index.html') # return frontend
 
 @app.route('/registrate', methods=['POST'])
 @cross_origin() # comment out in deployment
