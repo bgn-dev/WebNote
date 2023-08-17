@@ -24,7 +24,6 @@
 .input_title {
     flex: 1;
     /* Grow to fill available space */
-    
     /* Add spacing between input field and button */
     background-color: white;
     border-radius: 2px;
@@ -34,4 +33,12 @@
     padding: 10px 25px;
     cursor: pointer;
     transition: 0.3s;
+}
+
+.save_button {
+    margin-left: 0.2em;
+}
+
+.back_button {
+    margin-left: 0.2em;
 }
