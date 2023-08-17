@@ -5,10 +5,12 @@ import { useNavigate } from "react-router-dom";
 
 import './grid.css'
 import { MdOutlineDeleteForever } from 'react-icons/md';
-import { MdOutlineNoteAdd } from 'react-icons/md';
+import { LuFilePlus } from 'react-icons/lu';
 import { BsFillFileEarmarkArrowUpFill } from 'react-icons/bs';
 import { PiSignOutBold } from 'react-icons/pi';
 
+
+import { MdOutlineUploadFile } from 'react-icons/md';
 
 
 export default function Grid() {
@@ -69,6 +71,7 @@ export default function Grid() {
             const docRef = await addDoc(colRef, {
                 user: currentUser,
                 title: noteTitle,
+                note: "",
             });
             console.log("Document written with ID: ", docRef.id);
             handleNote(docRef.id, noteTitle);
@@ -85,34 +88,39 @@ export default function Grid() {
         navigate("/");
     }
 
-return (
-    <div>
-        <h1 className="grid_title">Your Notes</h1>
-        <i className="sign_out" onClick={() => handleSignOut()}> <PiSignOutBold /> </i>
-        <div className="new_note_container">
-            {toggle && <button onClick={() => handleNewNote()}>
-                <i> <MdOutlineNoteAdd /> </i>
-            </button>}
-        </div>
-        {!toggle &&
-            <div className="new_title_container">
-                <input type="token" value={noteTitle} placeholder="Title for your new note" onChange={(e) => handleInputChange(e)} />
-                <i onClick={() => handleNewUpload()}> <BsFillFileEarmarkArrowUpFill /> </i>
+    return (
+        <div className="grid_container">
+            <h1 className="grid_title">Your Notes</h1>
+            <i className="sign_out" onClick={() => handleSignOut()}> <PiSignOutBold /> </i>
+            <div className="new_note_container">
+                {toggle &&
+                    <button onClick={() => handleNewNote()}>
+                        <i> <LuFilePlus /> </i>
+                    </button>
+                }
             </div>
-        }
-        <div className="notes">
-            {notes.map((note) => (
-                <div className="notes_container" key={note.id}>
-                    <div className="note" onClick={() => {
-                        handleNote(note.id, note.title);
-                    }}>
-                        <p>{note.title}</p>
-                    </div>
-                    <i onClick={() => handleDelete(note.id)}> <MdOutlineDeleteForever /> </i>
+            {!toggle &&
+                <div className="new_title_container">
+                    <input type="token" value={noteTitle} placeholder="Title for your new note" onChange={(e) => handleInputChange(e)} />
+                    <i onClick={() => handleNewUpload()}> <MdOutlineUploadFile /> </i>
                 </div>
-            ))}
+            }
+            <div className="notes">
+                {notes.map((note) => (
+                    <div className="notes_container" key={note.id}>
+                        <div
+                            className="note"
+                            data-tooltip={note.title}
+                            onClick={() => {
+                                handleNote(note.id, note.title);
+                            }}>
+                            <p>{note.title}</p>
+                        </div>
+                        <i onClick={() => handleDelete(note.id)}> <MdOutlineDeleteForever /> </i>
+                    </div>
+                ))}
+            </div>
         </div>
-    </div>
-);
+    );
 }
 

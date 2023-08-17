@@ -2,7 +2,7 @@
   text-align: center;
 }
 
-.App-header {
+.App-Header {
   background-image: linear-gradient(to right, #d3cce3, #e9e4f0);
   min-height: 100vh;
   display: flex;
@@ -10,13 +10,10 @@
   align-items: center;
   justify-content: center;
   font-size: calc(10px + 2vmin);
+  width: 100%;
 }
 
-label,
-input,
 button {
-  padding: 0.2em;
-  margin: 0.1em 0.2em;
   /* the following ensures they're all using the same box-model for rendering */
   -moz-box-sizing: border-box;
   /* or `border-box` */

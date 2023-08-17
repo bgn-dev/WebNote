@@ -5,12 +5,12 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 
 #cred = credentials.Certificate(os.getcwd() + "/key.json")
-cred = credentials.Certificate(os.getcwd() + "/server/key.json")# for deployment
+cred = credentials.Certificate(os.getcwd() + "/server/key.json") # for deployment
 firebase_admin.initialize_app(cred)
 db = firestore.client()
 
 
-app = Flask(__name__, static_url_path='/', static_folder= "../client/build") # static folder is the frontend, even it's not static
+app = Flask(__name__, static_url_path='/', static_folder= "../client/build") # assign the frontend to the backend
 CORS(app)
 cors = CORS() # comment out in deployment
 port = 9999
@@ -49,7 +49,3 @@ def generateToken():
         generateToken()
     else:
         return jsonify(token)
-
-#if __name__ == '__main__':
-    #app.run(host='localhost', port=port, debug=True)
-    
