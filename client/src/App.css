@@ -13,7 +13,7 @@
   width: 100%;
 }
 
-button {
+* {
   /* the following ensures they're all using the same box-model for rendering */
   -moz-box-sizing: border-box;
   /* or `border-box` */
