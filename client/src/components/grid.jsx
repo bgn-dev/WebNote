@@ -94,7 +94,7 @@ export default function Grid() {
             <i className="sign_out" onClick={() => handleSignOut()}> <PiSignOutBold /> </i>
             <div className="new_note_container">
                 {toggle &&
-                    <button onClick={() => handleNewNote()}>
+                    <button img = {<LuFilePlus/> } onClick={() => handleNewNote()}>
                         <i> <LuFilePlus /> </i>
                     </button>
                 }
@@ -107,7 +107,7 @@ export default function Grid() {
             }
             <div className="notes">
                 {notes.map((note) => (
-                    <div className="notes_container" key={note.id}>
+                    <div className="notes_column" key={note.id}>
                         <div
                             className="note"
                             data-tooltip={note.title}

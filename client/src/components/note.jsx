@@ -78,7 +78,7 @@ function NoteApp() {
   return (
     <div className="main_container">
       <div className="nav_container">
-        <input className="input_title" type="token" value={noteTitle} placeholder="YOUR TOKEN" onChange={(e) => setNoteTitle(e.target.value)} />
+        <input className="input_title" type="token" value={noteTitle} placeholder="Title" onChange={(e) => setNoteTitle(e.target.value)} />
         <button className="save_button" onClick={handleUpload} >Save</button>
         <button className="back_button" onClick={handleGoBack} >Go Back</button>
       </div>
