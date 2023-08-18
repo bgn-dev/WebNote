@@ -1,16 +1,15 @@
 .grid_title {
     font-size: 36px;
     padding-top: 1rem;
-    text-align: center;
-    margin-top: -25%;
 }
 
 .sign_out {
     position: fixed;
-    top: 45px;
+    top: 25px;
     right: 25px;
     font-size: 35px;
     cursor: pointer;
+    transition: font-size 0.3s;
 }
 
 .sign_out:hover {
@@ -18,10 +17,12 @@
 }
 
 .new_note_container {
-    display: flex;
-    justify-content: center;
-    margin-top: 1rem;
+    padding-top: 10px;
+    padding-bottom: 1rem;
+}
 
+.new_note_container button:hover {
+    padding: 1rem;
 }
 
 .new_note_container button {
@@ -38,28 +39,51 @@
 }
 
 .grid_container {
+    position: fixed;
+    top: 0%;
     width: 100%;
+    overflow-y: hidden;
 }
 
 .notes {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
+    display: grid;
+    margin: auto 1.5rem;
+    padding-top: 1rem;
+    padding-bottom: 3rem;
     gap: 1rem;
-    padding: 1rem;
-    position: relative;
+    max-height: calc(100vh - 100px);
+    /* Adjust height as needed */
+    overflow-y: scroll;
+    /* Add scrollbar if content overflows */
+
 }
 
-.notes_container {
-    flex: 0 1 calc(25% - 1rem);
-    /* Adjust the width for 4 notes per row */
+@media only screen and (min-width: 768px) {
+    .notes {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media only screen and (min-width: 960px) {
+    .notes {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media only screen and (min-width: 1200px) {
+    .notes {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+.notes_column {
     display: flex;
     justify-content: space-between;
     background-color: #fff;
     border-radius: 0.25rem;
     box-shadow: 0 20px 40px -14px rgba(0, 0, 0, 0.25);
     padding: 0.7rem 1rem 0.7rem 1rem;
-    max-width: 335px;
+    min-width: 320px;
     max-height: 60px;
 }
 
@@ -100,7 +124,11 @@
     cursor: pointer;
 }
 
-.notes_container i {
+.notes_column i:hover {
+    color: rgb(255, 79, 79);
+}
+
+.notes_column i {
     font-size: 25px;
     display: flex;
     align-items: center;
