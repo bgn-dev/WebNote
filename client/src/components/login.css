@@ -44,7 +44,7 @@
     position: absolute;
     right: 20px;
     margin: -15px;
-    top: 50%;
+    top: 45%;
     transform: translateY(-50%);
     font-size: 35px;
     animation: spin 5s linear infinite; /* Apply the animation */
