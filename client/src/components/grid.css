@@ -1,6 +1,28 @@
+:root {
+    --active_title: 1rem; /* Default value */
+    --div_size_of_notes_column: 270px;
+}
+
+.grid_container {
+    position: fixed;
+    top: 0%;
+    width: 100%;
+    overflow-y: hidden;
+}
+
 .grid_title {
-    font-size: 36px;
-    padding-top: 1rem;
+    position: relative;
+    text-align: center;
+    text-transform: uppercase;
+    padding: 0;
+    margin-top: 1.2rem;
+    font-family: "Raleway", sans-serif;
+    font-weight: 300;
+    font-size: 40px;
+    color: #080808;
+    -webkit-transition: all 0.4s ease 0s;
+    -o-transition: all 0.4s ease 0s;
+    transition: all 0.4s ease 0s;
 }
 
 .sign_out {
@@ -17,12 +39,8 @@
 }
 
 .new_note_container {
-    padding-top: 10px;
-    padding-bottom: 1rem;
-}
-
-.new_note_container button:hover {
-    padding: 1rem;
+    margin-top: 10px;
+    margin-bottom: 1rem;
 }
 
 .new_note_container button {
@@ -34,15 +52,32 @@
     padding: 10px;
 }
 
+.new_note_container button:hover {
+    padding: 1rem;
+}
+
 .new_note_container i {
     font-size: 25px;
 }
 
-.grid_container {
-    position: fixed;
-    top: 0%;
-    width: 100%;
-    overflow-y: hidden;
+.new_title_container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #fff;
+    margin: 0rem 1.5rem 1.5rem 1.5rem;
+    border-radius: 0.25rem;
+    box-shadow: 0 20px 40px -14px rgba(0, 0, 0, 0.25);
+    padding: 0.7rem 1rem 0.7rem 1rem;
+}
+
+.new_title_container input {
+    flex: 1;
+}
+
+.new_title_container i {
+    font-size: 25px;
+    cursor: pointer;
 }
 
 .notes {
@@ -51,7 +86,7 @@
     padding-top: 1rem;
     padding-bottom: 3rem;
     gap: 1rem;
-    max-height: calc(100vh - 100px);
+    max-height: calc(90vh - 100px);
     /* Adjust height as needed */
     overflow-y: scroll;
     /* Add scrollbar if content overflows */
@@ -83,15 +118,21 @@
     border-radius: 0.25rem;
     box-shadow: 0 20px 40px -14px rgba(0, 0, 0, 0.25);
     padding: 0.7rem 1rem 0.7rem 1rem;
-    min-width: 320px;
+    min-width: var(--div_size_of_notes_column);
     max-height: 60px;
 }
 
 .note {
+    box-sizing: border-box;
+}
+
+.note p {
+    text-align: justify;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
     position: relative;
+    width: var(--div_size_of_notes_column);
 }
 
 .note::before {
@@ -132,26 +173,5 @@
     font-size: 25px;
     display: flex;
     align-items: center;
-    cursor: pointer;
-}
-
-.new_title_container {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background-color: #fff;
-    padding: 1rem;
-    margin: auto 1.5rem;
-    border-radius: 0.25rem;
-    box-shadow: 0 20px 40px -14px rgba(0, 0, 0, 0.25);
-    padding: 0.7rem 1rem 0.7rem 1rem;
-}
-
-.new_title_container input {
-    flex: 1;
-}
-
-.new_title_container i {
-    font-size: 25px;
     cursor: pointer;
 }
