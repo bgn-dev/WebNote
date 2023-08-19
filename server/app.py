@@ -16,8 +16,8 @@ cors = CORS() # comment out in deployment
 port = 9999
 
 @app.route("/", defaults={'path':''}) # This catches the root path
-@app.route("/<string:path>")
-@app.route("/<path:path>")
+@app.route("/<string:path>") # This catches a single URL segment (portion between slashes)
+@app.route("/<path:path>") # This catches the entire URL path
 def serve(path):
     return send_from_directory(app.static_folder,'index.html') # return frontend
 
