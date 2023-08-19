@@ -16,9 +16,13 @@ cors = CORS() # comment out in deployment
 port = 9999
 
 @app.route("/", defaults={'path':''}) # This catches the root path
-@app.route('/<path:path>') # This catches all other paths
 def serve(path):
     return send_from_directory(app.static_folder,'index.html') # return frontend
+
+# Serve static files like JavaScript, CSS, etc.
+@app.route('/static/<path:path>')
+def serve_static(path):
+    return send_from_directory(os.path.join(app.static_folder, 'static'), path)
 
 @app.route('/registrate', methods=['POST'])
 @cross_origin() # comment out in deployment
