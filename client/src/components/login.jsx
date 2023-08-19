@@ -21,7 +21,6 @@ export default function Login() {
     }
     // initiate the post request via axios for the login
     const handleSignUp = () => {
-        //Axios.post("http://localhost:9999/registrate", {
         Axios.post("https://neat-note-4478e343a4f5.herokuapp.com/registrate", {
             id: token,
         })
@@ -37,11 +36,6 @@ export default function Login() {
     };
 
     const handleSignIn = () => {
-        if (token.trim() === "") {
-            // Display an error message or take appropriate action for empty input
-            console.log("Token does not have the norms.");
-            return;
-        }
         Axios.post("https://neat-note-4478e343a4f5.herokuapp.com/authenticate", {
             id: token,
         })
@@ -51,9 +45,9 @@ export default function Login() {
                 navigate("/grid");
             })
             .catch((error) => {
-                console.error("An error occurred:", error);
-            })
-            ;
+                console.error("An error occurred:", "Token is not valid");
+                shake_animation();
+            });
     }
 
     const generateToken = () => {
@@ -70,6 +64,16 @@ export default function Login() {
     function handleInputChange(e) {
         setToken(e.target.value)
         setLog_Button("Sign In")
+    }
+
+    function shake_animation() {
+        // Trigger the blinking effect on the token input field
+        const tokenInput = document.querySelector('.input_verification input[type="token"]');
+        tokenInput.classList.add('shake');
+        // Remove the shake class after 0.5 seconds
+        setTimeout(() => {
+            tokenInput.classList.remove('shake');
+        }, 500);
     }
 
     return (

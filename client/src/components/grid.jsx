@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { collection, onSnapshot, query, where, deleteDoc, doc, addDoc } from "@firebase/firestore"
 import { firestore } from '../database/config';
 import { useNavigate } from "react-router-dom";
@@ -6,7 +6,6 @@ import { useNavigate } from "react-router-dom";
 import './grid.css'
 import { MdOutlineDeleteForever } from 'react-icons/md';
 import { LuFilePlus } from 'react-icons/lu';
-import { BsFillFileEarmarkArrowUpFill } from 'react-icons/bs';
 import { PiSignOutBold } from 'react-icons/pi';
 
 
@@ -21,10 +20,12 @@ export default function Grid() {
     const [toggle, setToggle] = useState(true);
 
     const currentUser = localStorage.getItem("currentUser");
-    const colRef = collection(firestore, "notes");
+    const colRef = collection(firestore, "notes"); // reference to the db
 
-    // Query only the docs uploaded by the currentUser
-    const docQuery = query(colRef, where("user", "==", currentUser));
+    const docQuery = query(colRef, where("user", "==", currentUser)); // Query only the docs uploaded by the currentUser
+
+
+    const ref = useRef(null); // reference for the div note
 
     // Subscribe to changes within the database
     useEffect(() => {
@@ -59,7 +60,8 @@ export default function Grid() {
     }
 
     function handleNewNote() {
-        setToggle(!setToggle)
+        setToggle(!toggle);
+        console.log(toggle);
     }
 
     function handleInputChange(e) {
@@ -88,26 +90,64 @@ export default function Grid() {
         navigate("/");
     }
 
+    function changePaddingNotes() {
+        document.documentElement.style.setProperty('--active_title', "6rem"); // changes the padding value from var inside grid.css
+    }
+
+
+    /**
+     * Update the variable "--div_size_of_notes_column" inside of grid.css
+     * Subtract 53 to fit the delete icon inside the div
+     */
+    const updateColumnSize = () => {
+        if (ref.current) {
+            const width = ref.current.offsetWidth;
+            //console.log({ width, height });
+            document.documentElement.style.setProperty('--div_size_of_notes_column', (ref.current.offsetWidth) - 53 + "px");
+        }
+    };
+
+    updateColumnSize(); // run once at first render
+
+    /**
+     * Track the size of the div "notes_colum"
+     * Fires only when size of browser is changed
+     */
+    useEffect(() => {
+        updateColumnSize(); // Initial size update
+
+        window.addEventListener('resize', updateColumnSize);
+
+        return () => {
+            window.removeEventListener('resize', updateColumnSize);
+        };
+    }, []);
+
     return (
         <div className="grid_container">
-            <h1 className="grid_title">Your Notes</h1>
+            <h1 className="grid_title">Welcome</h1>
             <i className="sign_out" onClick={() => handleSignOut()}> <PiSignOutBold /> </i>
             <div className="new_note_container">
                 {toggle &&
-                    <button img = {<LuFilePlus/> } onClick={() => handleNewNote()}>
+                    <button img={<LuFilePlus />} onClick={() => {
+                        handleNewNote();
+                        changePaddingNotes();
+                    }}>
                         <i> <LuFilePlus /> </i>
                     </button>
                 }
             </div>
             {!toggle &&
+
                 <div className="new_title_container">
                     <input type="token" value={noteTitle} placeholder="Title for your new note" onChange={(e) => handleInputChange(e)} />
                     <i onClick={() => handleNewUpload()}> <MdOutlineUploadFile /> </i>
                 </div>
+
             }
             <div className="notes">
                 {notes.map((note) => (
-                    <div className="notes_column" key={note.id}>
+                    <div ref={ref} className="notes_column" key={note.id}>
                         <div
                             className="note"
                             data-tooltip={note.title}
