@@ -15,14 +15,17 @@ CORS(app)
 cors = CORS() # comment out in deployment
 port = 9999
 
-@app.route("/", defaults={'path':''}) # This catches the root path
-def serve(path):
-    return send_from_directory(app.static_folder,'index.html') # return frontend
+# Serve static files from the React build folder
+@app.route('/client/<path:filename>')
+def serve_static(filename):
+    return send_from_directory(os.path.join('client', 'build'), filename)
 
-# Serve static files like JavaScript, CSS, etc.
-@app.route('/static/<path:path>')
-def serve_static(path):
-    return send_from_directory(os.path.join(app.static_folder, 'static'), path)
+# Catch-all route to serve index.html for all other routes
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def serve(path):
+    return send_from_directory(os.path.join('client', 'build'), 'index.html')
+
 
 @app.route('/registrate', methods=['POST'])
 @cross_origin() # comment out in deployment
