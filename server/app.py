@@ -18,13 +18,13 @@ port = 9999
 # Serve static files from the React build folder
 @app.route('/client/<path:filename>')
 def serve_static(filename):
-    return send_from_directory(os.path.join('client', 'build'), filename)
+    return send_from_directory(app.static_folder, filename)
 
 # Catch-all route to serve index.html for all other routes
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def serve(path):
-    return send_from_directory(os.path.join('client', 'build'), 'index.html')
+    return send_from_directory(app.static_folder, 'index.html')
 
 
 @app.route('/registrate', methods=['POST'])
