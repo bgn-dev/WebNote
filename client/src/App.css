@@ -32,10 +32,16 @@ button {
   padding: 10px 25px;
   cursor: pointer;
   transition: 0.3s;
+  animation: button_press 2s ease-in-out;
 }
 
 /* click 'animation' */
-button:active {
+/* button:active {
   position: relative;
-  top: 2px;
+  top: -2px;
+} */
+
+button:hover {
+  background-color: #081F2D;
+  color: wheat;
 }
