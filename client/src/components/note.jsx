@@ -1,17 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import ReactQuill from 'react-quill';
 import { useLocation } from 'react-router-dom';
-import { updateDoc, getDoc, doc } from "@firebase/firestore"
+import { updateDoc, getDoc, doc, onSnapshot } from "@firebase/firestore"
 import { firestore } from '../database/config';
 import { useNavigate } from "react-router-dom";
+import { debounce, throttle } from 'lodash'; // Import the debounce function
 
 import './note.css';
 import './quill.snow.css';
 
-function NoteApp() {
+import { BiGroup } from 'react-icons/bi';
+import { BsPersonPlus } from 'react-icons/bs';
+
+export default function NoteApp() {
   const navigate = useNavigate();
 
   const [noteText, setNoteText] = useState("");
+  const [inputToken, setInputToken] = useState("");
 
   const location = useLocation();
   const noteID = location.state && location.state.noteID;
@@ -29,63 +34,139 @@ function NoteApp() {
 
     [{ 'size': ['small', false, 'large', 'huge'] }],  // custom dropdown
     [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
-
+    
     [{ 'color': [] }, { 'background': [] }],          // dropdown with defaults from theme
     [{ 'font': [] }],
     [{ 'align': [] }],
-
+    
     ['clean'],                                          // remove formatting button
   ];
-
+  
   const module = {
     toolbar: toolbarOptions,
   };
+  
+  const handleGoBack = () => {
+    navigate("/grid");
+  }
+
+  const handleInvite = async (token) => {
+    setInputToken(""); // clear variable
+
+    const collabRef = doc(firestore, 'collaboration', noteID);
+
+    let documentData = [];
+    let numberOfMembers = 1;
+
+    try {
+      // Fetch the document data
+      const documentSnapshot = await getDoc(collabRef);
+
+      if (documentSnapshot.exists()) {
+        documentData = documentSnapshot.data();
+        numberOfMembers = numberOfMembers + Object.keys(documentData).length;
+        documentData[numberOfMembers] = token;
+
+        console.log(documentData)
+        console.log(numberOfMembers)
+
+        // Create a new document with the modified data
+        await updateDoc(collabRef, documentData);
+
+        console.log('Fetched document:', documentData);
+      } else {
+        console.log('Document does not exist');
+      }
+    } catch (error) {
+      console.error('Error fetching document:', error);
+    }
+
+
+  };
+
 
   useEffect(() => {
-    // Reference to the Firestore document by its ID
     const noteRef = doc(firestore, 'notes', noteID);
-    // Fetch the document data
-    getDoc(noteRef)
-      .then((doc) => {
-        if (doc.exists()) {
-          setNoteText(doc.data().note);
-        } else {
-          console.log('Document not found');
+
+    // Fetch initial data from Firestore
+    const fetchNoteData = async () => {
+      try {
+        const docSnapshot = await getDoc(noteRef);
+        if (docSnapshot.exists()) {
+          const data = docSnapshot.data();
+          setNoteTitle(data.title);
+          setNoteText(data.note);
         }
-      })
-      .catch((error) => {
+      } catch (error) {
         console.error('Error fetching document:', error);
-      });
+      }
+    };
+
+    fetchNoteData();
+
+    // Set up a real-time listener for the document
+    const unsubscribe = onSnapshot(noteRef, (docSnapshot) => {
+      if (docSnapshot.exists()) {
+        const data = docSnapshot.data();
+        setNoteText(data.note);
+        setNoteTitle(data.title);
+      } else {
+        console.log('Document not found');
+      }
+    });
+
+    return () => {
+      unsubscribe();
+    };
   }, [noteID]);
 
-  const handleUpload = async () => {
+  const debouncedHandleUpload = debounce(async (newNoteText, newNoteTitle) => {
     const noteRef = doc(firestore, 'notes', noteID);
     try {
       await updateDoc(noteRef, {
-        note: noteText, // Update the 'note' field with the edited text
-        title: noteTitle // Update the 'title' field with the edited title
+        note: newNoteText,
+        title: newNoteTitle,
       });
       console.log("Document successfully updated!");
     } catch (error) {
       console.error("Error updating document: ", error);
     }
+  }, 10);
+
+  const throttledHandleUpload = throttle(async (newNoteText, newNoteTitle) => {
+    const noteRef = doc(firestore, 'notes', noteID);
+    try {
+      await updateDoc(noteRef, {
+        note: newNoteText,
+        title: newNoteTitle,
+      });
+      console.log("Document successfully updated!");
+    } catch (error) {
+      console.error("Error updating document: ", error);
+    }
+  }, 2000);
+  
+  const handleTextChange = (newNoteText) => {
+    setNoteText(newNoteText);
+    debouncedHandleUpload(newNoteText, noteTitle);
+    //throttledHandleUpload(newNoteText, noteTitle);
   };
 
-  const handleGoBack = () => {
-    navigate("/grid");
-  }
+
 
   return (
     <div className="main_container">
+      <i onClick={() => handleGoBack}> <BiGroup /> </i>
+      <input className="input_token" placeholder="TOKEN OF COLLABORATOR" value={inputToken} onChange={(e) => setInputToken(e.target.value)} />
+      <button className="invite_btn" onClick={() => handleInvite(inputToken)}> <BsPersonPlus /> </button>
       <div className="nav_container">
         <input className="input_title" type="token" value={noteTitle} placeholder="Title" onChange={(e) => setNoteTitle(e.target.value)} />
-        <button className="save_button" onClick={handleUpload} >Save</button>
-        <button className="back_button" onClick={handleGoBack} >Go Back</button>
-      </div>
-      <ReactQuill modules={module} theme="snow" value={noteText} onChange={setNoteText} />
-    </div>
 
+        <button className="back_button" onClick={handleGoBack} > Go Back </button>
+      </div>
+      <ReactQuill modules={module} theme="snow" value={noteText} onChange={handleTextChange} />
+    </div>
   );
 }
 
-export default NoteApp;
+
