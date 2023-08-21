@@ -7,7 +7,6 @@ import './grid.css'
 import { MdOutlineDeleteForever } from 'react-icons/md';
 import { LuFilePlus } from 'react-icons/lu';
 import { PiSignOutBold } from 'react-icons/pi';
-import { BiGroup } from 'react-icons/bi';
 import { MdOutlineUploadFile } from 'react-icons/md';
 
 
@@ -128,7 +127,7 @@ export default function Grid() {
             handleNote(docRef.id, noteTitle);
         }
         const result = fetchD().catch(console.error);
-        
+
         //  log the result
         console.log(result);
     }
