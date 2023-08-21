@@ -1,0 +1,79 @@
+.navbar-container {
+    margin-bottom: 15px;
+}
+
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    background-image: linear-gradient(to right, #d3cce3, #e9e4f0);
+    height: 10vh;
+    align-items: center;
+    padding: 1.5rem;
+    gap: 1rem;
+}
+
+.navbar-logo-container {
+    text-align: center;
+}
+
+.navbar-logo-container h1 {
+    color: black;
+    font-family: 'Oswald', sans-serif;
+    font-weight: 300;
+    font-size: 50px;
+    text-transform: uppercase;
+    line-height:1;
+    opacity: 0.8;
+}
+
+.navbar-logo p {
+    font-size: 14px;
+    padding-left: 0px;
+    color: black;
+    font-weight: 600;  
+    text-transform: uppercase;
+    opacity: 0.5;
+}
+
+.navbar input {
+    width: 100%;
+    border-radius: 0.25rem;
+    padding: 4px;
+    padding-left: 1rem;
+    box-shadow: 0 20px 40px -14px rgba(0, 0, 0, 0.25);
+}
+
+.search {
+    border-radius: 0.25rem;
+    border: none;
+    box-shadow: 0 20px 40px -14px rgba(0, 0, 0, 0.25);
+}
+
+.search svg {
+    font-size: 25px;
+}
+
+.toggle-collab {
+    border-radius: 0.25rem;
+    border: none;
+    box-shadow: 0 20px 40px -14px rgba(0, 0, 0, 0.25);
+}
+
+.toggle-collab svg {
+    font-size: 25px;
+}
+
+.button-clicked {
+    background-color: #081F2D;
+    color: wheat;
+}
+
+.sign-out {
+    border-radius: 0.25rem;
+    border: none;
+    box-shadow: 0 20px 40px -14px rgba(0, 0, 0, 0.25);
+}
+
+.sign-out svg {
+    font-size: 25px;
+}
