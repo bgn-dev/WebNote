@@ -4,10 +4,12 @@ import { firestore } from '../database/config';
 import { useNavigate } from "react-router-dom";
 
 import './grid.css'
+
 import { MdOutlineDeleteForever } from 'react-icons/md';
 import { LuFilePlus } from 'react-icons/lu';
-import { PiSignOutBold } from 'react-icons/pi';
 import { MdOutlineUploadFile } from 'react-icons/md';
+
+import Navbar from './navbar';
 
 
 
@@ -19,7 +21,6 @@ export default function Grid() {
     const [collabedDocs, setCollabedDocs] = useState([]);
     const [noteTitle, setNoteTitle] = useState("");
     const [toggle, setToggle] = useState(true);
-    const [collab_text, setCollab_text] = useState("No Collaboration")
 
     const currentUser = localStorage.getItem("currentUser");
     const colRef = collection(firestore, "notes"); // reference to the db
@@ -102,16 +103,6 @@ export default function Grid() {
         console.log(toggle);
     }
 
-    function collabsToggle() {
-        setCollabToggle(!collabToggle);
-        if (collab_text === "No Collaboration") {
-            setCollab_text("Collab");
-        } else {
-            setCollab_text("No Collaboration");
-        }
-        console.log(collabToggle);
-    }
-
     function handleInputChange(e) {
         setNoteTitle(e.target.value);
     }
@@ -132,11 +123,6 @@ export default function Grid() {
         console.log(result);
     }
 
-    function handleSignOut() {
-        localStorage.removeItem("currentUser");
-        navigate("/");
-    }
-
     function changePaddingNotes() {
         document.documentElement.style.setProperty('--active_title', "6rem"); // changes the padding value from var inside grid.css
     }
@@ -150,7 +136,7 @@ export default function Grid() {
         if (ref.current) {
             const width = ref.current.offsetWidth;
             //console.log({ width, height });
-            document.documentElement.style.setProperty('--div_size_of_notes_column', (ref.current.offsetWidth) - 53 + "px");
+            document.documentElement.style.setProperty('--div_size_of_notes_column', width - 53 + "px");
         }
     };
 
@@ -171,64 +157,69 @@ export default function Grid() {
     }, []);
 
     return (
-        <div className="grid_container">
-            <h1 className="grid_title">Welcome</h1>
-            <i className="sign_out" onClick={() => handleSignOut()}> <PiSignOutBold /> </i>
-            <div className="new_note_container">
-                {toggle &&
-                    <div>
-                        <button onClick={() => {
-                            handleNewNote();
-                            changePaddingNotes();
-                        }}>
-                            <i> <LuFilePlus /> </i>
-                        </button>
-                        <button className="toggle_collab" onClick={() => collabsToggle()}>{collab_text}</button>
+        <div>
+            < Navbar
+                collabToggle={collabToggle}
+                setCollabToggle={setCollabToggle}
+            />
+            <div className="grid_container">
+                <div className="new_note_container">
+                    {toggle &&
+                        <div>
+                            <button onClick={() => {
+                                handleNewNote();
+                                changePaddingNotes();
+                            }}>
+                                <i> <LuFilePlus /> </i>
+                            </button>
+
+
+                        </div>
+                    }
+                </div>
+                {!toggle &&
+
+                    <div className="new_title_container">
+                        <input type="token" value={noteTitle} placeholder="Title" onChange={(e) => handleInputChange(e)} />
+                        <i onClick={() => handleNewUpload()}> <MdOutlineUploadFile /> </i>
+                    </div>
+
+                }
+                {!collabToggle &&
+                    <div className="notes">
+                        {notes.map((note) => (
+                            <div ref={ref} className="notes_column" key={note.id}>
+                                <div
+                                    className="note"
+                                    data-tooltip={note.title}
+                                    onClick={() => {
+                                        handleNote(note.id, note.title);
+                                    }}>
+                                    <p>{note.title}</p>
+                                </div>
+                                <i onClick={() => handleDelete(note.id)}> <MdOutlineDeleteForever /> </i>
+                            </div>
+                        ))}
+                    </div>
+                }
+                {collabToggle &&
+                    <div className="notes">
+                        {collabedDocs.map((note) => (
+                            <div ref={ref} className="notes_column" key={note.id}>
+                                <div
+                                    className="note"
+                                    data-tooltip={note.title}
+                                    onClick={() => {
+                                        handleNote(note.id, note.title);
+                                    }}>
+                                    <p>{note.title}</p>
+                                </div>
+                                <i onClick={() => handleDelete(note.id)}> <MdOutlineDeleteForever /> </i>
+                            </div>
+                        ))}
                     </div>
                 }
             </div>
-            {!toggle &&
-
-                <div className="new_title_container">
-                    <input type="token" value={noteTitle} placeholder="Title for your new note" onChange={(e) => handleInputChange(e)} />
-                    <i onClick={() => handleNewUpload()}> <MdOutlineUploadFile /> </i>
-                </div>
-
-            }
-            {!collabToggle &&
-                <div className="notes">
-                    {notes.map((note) => (
-                        <div ref={ref} className="notes_column" key={note.id}>
-                            <div
-                                className="note"
-                                data-tooltip={note.title}
-                                onClick={() => {
-                                    handleNote(note.id, note.title);
-                                }}>
-                                <p>{note.title}</p>
-                            </div>
-                            <i onClick={() => handleDelete(note.id)}> <MdOutlineDeleteForever /> </i>
-                        </div>
-                    ))}
-                </div>
-            }
-            {collabToggle &&
-                <div className="notes">
-                    {collabedDocs.map((note) => (
-                        <div ref={ref} className="notes_column" key={note.id}>
-                            <div
-                                className="note"
-                                data-tooltip={note.title}
-                                onClick={() => {
-                                    handleNote(note.id, note.title);
-                                }}>
-                                <p>{note.title}</p>
-                            </div>
-                            <i onClick={() => handleDelete(note.id)}> <MdOutlineDeleteForever /> </i>
-                        </div>
-                    ))}
-                </div>
-            }
         </div>
     );
 }
