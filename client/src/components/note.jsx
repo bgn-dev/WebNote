@@ -1,16 +1,20 @@
-import React, { useState, useEffect } from 'react';
-import ReactQuill from 'react-quill';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { updateDoc, getDoc, doc, onSnapshot } from "@firebase/firestore"
 import { firestore } from '../database/config';
 import { useNavigate } from "react-router-dom";
-import { debounce, throttle } from 'lodash'; // Import the debounce function
+import { debounce } from 'lodash'; // Import the debounce function
+
+import ReactQuill from 'react-quill';
 
 import './note.css';
 import './quill.snow.css';
 
 import { BiGroup } from 'react-icons/bi';
 import { BsPersonPlus } from 'react-icons/bs';
+import { TfiBackLeft } from 'react-icons/tfi';
+
+
 
 export default function NoteApp() {
   const navigate = useNavigate();
@@ -34,18 +38,18 @@ export default function NoteApp() {
 
     [{ 'size': ['small', false, 'large', 'huge'] }],  // custom dropdown
     [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
-    
+
     [{ 'color': [] }, { 'background': [] }],          // dropdown with defaults from theme
     [{ 'font': [] }],
     [{ 'align': [] }],
-    
+
     ['clean'],                                          // remove formatting button
   ];
-  
+
   const module = {
     toolbar: toolbarOptions,
   };
-  
+
   const handleGoBack = () => {
     navigate("/grid");
   }
@@ -80,30 +84,11 @@ export default function NoteApp() {
     } catch (error) {
       console.error('Error fetching document:', error);
     }
-
-
   };
 
 
   useEffect(() => {
     const noteRef = doc(firestore, 'notes', noteID);
-
-    // Fetch initial data from Firestore
-    const fetchNoteData = async () => {
-      try {
-        const docSnapshot = await getDoc(noteRef);
-        if (docSnapshot.exists()) {
-          const data = docSnapshot.data();
-          setNoteTitle(data.title);
-          setNoteText(data.note);
-        }
-      } catch (error) {
-        console.error('Error fetching document:', error);
-      }
-    };
-
-    fetchNoteData();
-
     // Set up a real-time listener for the document
     const unsubscribe = onSnapshot(noteRef, (docSnapshot) => {
       if (docSnapshot.exists()) {
@@ -133,38 +118,32 @@ export default function NoteApp() {
     }
   }, 10);
 
-  const throttledHandleUpload = throttle(async (newNoteText, newNoteTitle) => {
-    const noteRef = doc(firestore, 'notes', noteID);
-    try {
-      await updateDoc(noteRef, {
-        note: newNoteText,
-        title: newNoteTitle,
-      });
-      console.log("Document successfully updated!");
-    } catch (error) {
-      console.error("Error updating document: ", error);
-    }
-  }, 2000);
-  
-  const handleTextChange = (newNoteText) => {
-    setNoteText(newNoteText);
-    debouncedHandleUpload(newNoteText, noteTitle);
-    //throttledHandleUpload(newNoteText, noteTitle);
+  const handleTextChange = () => {
+    // extracting the innerHTML is needed, since firestore has problems with saving spaces within the value={noteText}
+    const quillEditor = document.querySelector('.ql-editor');
+    const htmlContent = quillEditor.innerHTML;
+    //console.log(htmlContent)
+    debouncedHandleUpload(htmlContent, noteTitle);
   };
-
 
 
   return (
     <div className="main_container">
-      <i onClick={() => handleGoBack}> <BiGroup /> </i>
-      <input className="input_token" placeholder="TOKEN OF COLLABORATOR" value={inputToken} onChange={(e) => setInputToken(e.target.value)} />
-      <button className="invite_btn" onClick={() => handleInvite(inputToken)}> <BsPersonPlus /> </button>
-      <div className="nav_container">
-        <input className="input_title" type="token" value={noteTitle} placeholder="Title" onChange={(e) => setNoteTitle(e.target.value)} />
-
-        <button className="back_button" onClick={handleGoBack} > Go Back </button>
+      <div className="group-container">
+        <i onClick={() => handleGoBack}> <BiGroup /> </i>
+        <input className="input_token" placeholder="TOKEN OF COLLABORATOR" value={inputToken} onChange={(e) => setInputToken(e.target.value)} />
+        <button className="invite_btn" onClick={() => handleInvite(inputToken)}> <BsPersonPlus /> </button>
       </div>
-      <ReactQuill modules={module} theme="snow" value={noteText} onChange={handleTextChange} />
+      <div className="group-container">
+        <input className="input_title" type="token" value={noteTitle} placeholder="Title" onChange={(e) => setNoteTitle(e.target.value)} />
+        <button className="back_button" onClick={handleGoBack}> <TfiBackLeft /> </button>
+      </div>
+      <ReactQuill
+        modules={module}
+        theme="snow"
+        value={noteText}
+        onChange={handleTextChange}
+      />
     </div>
   );
 }

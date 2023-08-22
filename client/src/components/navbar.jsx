@@ -20,6 +20,7 @@ export default function Navbar({ collabToggle, setCollabToggle }) {
 
     function collabsToggle() {
         setCollabToggle(!collabToggle);
+        localStorage.setItem("collabToggle", collabToggle);
         setClickedOnce(!clickedOnce);
     }
 

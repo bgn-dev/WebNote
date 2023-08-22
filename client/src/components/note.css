@@ -7,8 +7,14 @@
     overflow: hidden;
 }
 
-.main_container i {
-    margin: 0rem 1rem 1rem 0rem;
+.group-container {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+    gap: 1rem;
+}
+
+.group-container i {
     font-size: 30px;
     background: #fff;
     width: fit-content;
@@ -17,20 +23,16 @@
     padding: 6px;
 }
 
-.main_container i:hover {
+.group-container i:hover {
     color: #7b1e43;
 }
 
-.main_container i:active {
+.group-container i:active {
     position: relative;
     top: 3px;
 }
 
 .input_token {
-    position: absolute;
-    width: fit-content;
-    margin: 0rem 3rem;
-    width: fit-content;
     font-size: 21px;
     background-color: white;
     border-radius: 2px;
@@ -38,13 +40,10 @@
     color: black;
     font-size: 15px;
     padding: 10px 25px;
-    transition: 0.3s;
-    width: 40%;
+    flex: auto;
 }
 
 .invite_btn {
-    position: absolute;
-    margin-left: 40rem;
     font-size: 22px;
 }
 
@@ -74,11 +73,8 @@
     transition: 0.3s;
 }
 
-.save_button {
-    margin-left: 0.2em;
-}
-
 .back_button {
-    margin-left: 0.2em;
+    padding: 0px 23px 0px 24px;
+    font-size: 25px;
+    margin-left: -1.5px;
 }
-
