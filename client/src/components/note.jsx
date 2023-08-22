@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { updateDoc, getDoc, doc, onSnapshot } from "@firebase/firestore"
 import { firestore } from '../database/config';
@@ -151,11 +151,11 @@ export default function NoteApp() {
     <div className="main_container">
       <div className="group-container">
         <i onClick={() => handleGoBack}> <BiGroup /> </i>
-        <input className="input_token" placeholder="TOKEN OF COLLABORATOR" value={inputToken} onChange={(e) => handleTitleChange(e.target.value)} />
+        <input className="input_token" type="text" placeholder="TOKEN OF COLLABORATOR" value={inputToken} onChange={(e) => setInputToken(e.target.value)} />
         <button className="invite_btn" onClick={() => handleInvite(inputToken)}> <BsPersonPlus /> </button>
       </div>
       <div className="group-container">
-        <input className="input_title" type="token" value={noteTitle} placeholder="Title" onChange={(e) => setNoteTitle(e.target.value)} />
+        <input className="input_title" type="text" value={noteTitle} placeholder="Title" onChange={(e) => handleTitleChange(e.target.value)} />
         <button className="back_button" onClick={handleGoBack}> <TfiBackLeft /> </button>
       </div>
       <ReactQuill

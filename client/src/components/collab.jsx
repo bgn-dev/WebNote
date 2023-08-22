@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { collection, getDocs } from "@firebase/firestore"
 import { firestore } from '../database/config';
 
