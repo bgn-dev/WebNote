@@ -1,3 +1,4 @@
+import React from 'react';
 import Axios from 'axios';
 import { useState } from 'react';
 import { useNavigate } from "react-router-dom";
@@ -79,7 +80,7 @@ export default function Login() {
         <div className="login_container">
             <h1>WebNote</h1>
             <div className="input_verification">
-                <input type="token" value={token} placeholder="Token" onChange={(e) => handleInputChange(e)} />
+                <input type="text" value={token} placeholder="Token" onChange={(e) => handleInputChange(e)} />
                 <i><MdOutlineToken /></i>
             </div>
             <div className="token_container">
