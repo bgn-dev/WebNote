@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react'
-import { collection, onSnapshot, query, where, deleteDoc, doc, addDoc, getDocs, getDoc } from "@firebase/firestore"
+import { useEffect, useRef, useState } from 'react'
+import { collection, onSnapshot, query, where, deleteDoc, doc, addDoc, getDocs, getDoc, setDoc} from "@firebase/firestore"
 import { firestore } from '../database/config';
 import { useNavigate } from "react-router-dom";
 
@@ -107,21 +107,26 @@ export default function Grid() {
         setNoteTitle(e.target.value);
     }
 
-    const handleNewUpload = async (e) => {
-        const fetchD = async () => {
-            const docRef = await addDoc(colRef, {
-                user: currentUser,
-                title: noteTitle,
-                note: "",
-            });
-            console.log("Document written with ID: ", docRef.id);
-            handleNote(docRef.id, noteTitle);
+    const handleNewUpload = async () => {
+        try {
+          const docRef1 = doc(colRef);
+          await setDoc(docRef1, {
+            user: currentUser,
+            title: noteTitle,
+            note: "",
+          });
+      
+          // Use the ID of the first document for the second document
+          const docRef2 = doc(collabRef, docRef1.id); // Use the same custom ID
+          await setDoc(docRef2, {
+            1: currentUser,
+          });
+          console.log("Both documents uploaded successfully.", docRef1.id, docRef2.id);
+          handleNote(docRef1.id, noteTitle); // Navigate to note.jsx
+        } catch (error) {
+          console.error("Error uploading documents:", error);
         }
-        const result = fetchD().catch(console.error);
-
-        //  log the result
-        console.log(result);
-    }
+      };
 
     function changePaddingNotes() {
         document.documentElement.style.setProperty('--active_title', "6rem"); // changes the padding value from var inside grid.css
@@ -155,6 +160,8 @@ export default function Grid() {
             window.removeEventListener('resize', updateColumnSize);
         };
     }, []);
+
+    
 
     return (
         <div>
