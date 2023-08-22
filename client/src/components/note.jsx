@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { updateDoc, getDoc, doc, onSnapshot } from "@firebase/firestore"
 import { firestore } from '../database/config';
 import { useNavigate } from "react-router-dom";
-import { debounce } from 'lodash'; // Import the debounce function
+import { debounce, throttle } from 'lodash'; // Import the debounce function
 
 import ReactQuill from 'react-quill';
 
@@ -25,6 +25,9 @@ export default function NoteApp() {
   const location = useLocation();
   const noteID = location.state && location.state.noteID;
   const [noteTitle, setNoteTitle] = useState(location.state && location.state.noteTitle);
+
+
+
 
   var toolbarOptions = [
     ['bold', 'italic', 'underline', 'strike'],        // toggled buttons
@@ -55,8 +58,6 @@ export default function NoteApp() {
   }
 
   const handleInvite = async (token) => {
-    setInputToken(""); // clear variable
-
     const collabRef = doc(firestore, 'collaboration', noteID);
 
     let documentData = [];
@@ -78,6 +79,7 @@ export default function NoteApp() {
         await updateDoc(collabRef, documentData);
 
         console.log('Fetched document:', documentData);
+        setInputToken(""); // clear variable
       } else {
         console.log('Document does not exist');
       }
@@ -86,15 +88,21 @@ export default function NoteApp() {
     }
   };
 
-
   useEffect(() => {
     const noteRef = doc(firestore, 'notes', noteID);
     // Set up a real-time listener for the document
     const unsubscribe = onSnapshot(noteRef, (docSnapshot) => {
       if (docSnapshot.exists()) {
         const data = docSnapshot.data();
-        setNoteText(data.note);
+        console.log("Fetched as ", data.note);
+        // Only update noteText if it's different from fetched data
+        if (noteText !== data.note) {
+          console.log("Fetched as ", data.note);
+          setNoteText(data.note);
+        }
+        // Always update noteTitle
         setNoteTitle(data.title);
+
       } else {
         console.log('Document not found');
       }
@@ -103,7 +111,7 @@ export default function NoteApp() {
     return () => {
       unsubscribe();
     };
-  }, [noteID]);
+  }, []);
 
   const debouncedHandleUpload = debounce(async (newNoteText, newNoteTitle) => {
     const noteRef = doc(firestore, 'notes', noteID);
@@ -118,20 +126,32 @@ export default function NoteApp() {
     }
   }, 10);
 
-  const handleTextChange = () => {
-    // extracting the innerHTML is needed, since firestore has problems with saving spaces within the value={noteText}
-    const quillEditor = document.querySelector('.ql-editor');
-    const htmlContent = quillEditor.innerHTML;
-    //console.log(htmlContent)
-    debouncedHandleUpload(htmlContent, noteTitle);
+  const handleTextChange = (newNoteText) => {
+    if (noteText !== newNoteText) {
+
+      console.log("Upload as ", newNoteText);
+      debouncedHandleUpload(newNoteText, noteTitle);
+    }
   };
+
+  const handleTitleChange = async (newNoteTitle) => {
+    const noteRef = doc(firestore, 'notes', noteID);
+    try {
+      await updateDoc(noteRef, {
+        title: newNoteTitle,
+      });
+      console.log("Document successfully updated!");
+    } catch (error) {
+      console.error("Error updating document: ", error);
+    }
+  }
 
 
   return (
     <div className="main_container">
       <div className="group-container">
         <i onClick={() => handleGoBack}> <BiGroup /> </i>
-        <input className="input_token" placeholder="TOKEN OF COLLABORATOR" value={inputToken} onChange={(e) => setInputToken(e.target.value)} />
+        <input className="input_token" placeholder="TOKEN OF COLLABORATOR" value={inputToken} onChange={(e) => handleTitleChange(e.target.value)} />
         <button className="invite_btn" onClick={() => handleInvite(inputToken)}> <BsPersonPlus /> </button>
       </div>
       <div className="group-container">
