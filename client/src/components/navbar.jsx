@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import React, { useState } from 'react'
 import './navbar.css'
 
 import { useNavigate } from "react-router-dom";
@@ -24,6 +24,7 @@ export default function Navbar({ collabToggle, setCollabToggle }) {
 
     function collabsToggle() {
         setCollabToggle(!collabToggle);
+        console.log(!collabToggle)
         localStorage.setItem("collabToggle", collabToggle);
         setClickedOnce(!clickedOnce);
     }

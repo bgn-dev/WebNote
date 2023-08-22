@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
-import { collection, onSnapshot, query, where, deleteDoc, doc, addDoc, getDocs, getDoc, setDoc} from "@firebase/firestore"
+import React, { useEffect, useRef, useState } from 'react'
+import { collection, onSnapshot, query, where, deleteDoc, doc, addDoc, getDocs, getDoc, setDoc } from "@firebase/firestore"
 import { firestore } from '../database/config';
 import { useNavigate } from "react-router-dom";
 
@@ -109,24 +109,24 @@ export default function Grid() {
 
     const handleNewUpload = async () => {
         try {
-          const docRef1 = doc(colRef);
-          await setDoc(docRef1, {
-            user: currentUser,
-            title: noteTitle,
-            note: "",
-          });
-      
-          // Use the ID of the first document for the second document
-          const docRef2 = doc(collabRef, docRef1.id); // Use the same custom ID
-          await setDoc(docRef2, {
-            1: currentUser,
-          });
-          console.log("Both documents uploaded successfully.", docRef1.id, docRef2.id);
-          handleNote(docRef1.id, noteTitle); // Navigate to note.jsx
+            const docRef1 = doc(colRef);
+            await setDoc(docRef1, {
+                user: currentUser,
+                title: noteTitle,
+                note: "",
+            });
+
+            // Use the ID of the first document for the second document
+            const docRef2 = doc(collabRef, docRef1.id); // Use the same custom ID
+            await setDoc(docRef2, {
+                1: currentUser,
+            });
+            console.log("Both documents uploaded successfully.", docRef1.id, docRef2.id);
+            handleNote(docRef1.id, noteTitle); // Navigate to note.jsx
         } catch (error) {
-          console.error("Error uploading documents:", error);
+            console.error("Error uploading documents:", error);
         }
-      };
+    };
 
     function changePaddingNotes() {
         document.documentElement.style.setProperty('--active_title', "6rem"); // changes the padding value from var inside grid.css
@@ -161,7 +161,7 @@ export default function Grid() {
         };
     }, []);
 
-    
+
 
     return (
         <div>
@@ -187,7 +187,7 @@ export default function Grid() {
                 {!toggle &&
 
                     <div className="new_title_container">
-                        <input type="token" value={noteTitle} placeholder="Title" onChange={(e) => handleInputChange(e)} />
+                        <input type="text" value={noteTitle} placeholder="Title" onChange={(e) => handleInputChange(e)} />
                         <i onClick={() => handleNewUpload()}> <MdOutlineUploadFile /> </i>
                     </div>
 
