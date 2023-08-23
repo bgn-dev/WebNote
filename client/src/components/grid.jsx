@@ -179,18 +179,14 @@ export default function Grid() {
                             }}>
                                 <i> <LuFilePlus /> </i>
                             </button>
-
-
                         </div>
                     }
                 </div>
                 {!toggle &&
-
                     <div className="new_title_container">
                         <input type="text" value={noteTitle} placeholder="Title" onChange={(e) => handleInputChange(e)} />
                         <i onClick={() => handleNewUpload()}> <MdOutlineUploadFile /> </i>
                     </div>
-
                 }
                 {!collabToggle &&
                     <div className="notes">
