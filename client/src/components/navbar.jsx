@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import './navbar.css'
+
 
 import { useNavigate } from "react-router-dom";
 
@@ -8,14 +8,37 @@ import { BiSearchAlt2 } from 'react-icons/bi';
 import { BiGroup } from 'react-icons/bi';
 import { MdOutlineToken } from 'react-icons/md';
 
-import { ToastContainer, toast } from 'react-toastify';
+import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-
+import './navbar.css'
 
 
 export default function Navbar({ collabToggle, setCollabToggle }) {
     const navigate = useNavigate();
     const [clickedOnce, setClickedOnce] = useState(false);
+
+
+    const token_toast = () => toast(localStorage.getItem("currentUser"), {
+        icon: <MdOutlineToken />,
+    });
+
+    const group_toast = (text) => toast(text, {
+        icon: <BiGroup />,
+        autoClose: 1000,
+        newestOnTop: true,
+        closeOnClick: true,
+        pauseOnHover: false,
+        draggable: false,
+        progress: undefined,
+    });
+
+    function grop_toast_string() {
+        if (collabToggle) {
+            group_toast("Collaborative mode off");
+        } else {
+            group_toast("Collaborative mode on");
+        }
+    }
 
     function handleSignOut() {
         localStorage.removeItem("currentUser");
@@ -28,7 +51,7 @@ export default function Navbar({ collabToggle, setCollabToggle }) {
         localStorage.setItem("collabToggle", collabToggle);
         setClickedOnce(!clickedOnce);
     }
-    
+
 
     return (
         <div className="navbar-container">
@@ -40,9 +63,9 @@ export default function Navbar({ collabToggle, setCollabToggle }) {
                 </div>
                 <input type="token" placeholder="Search" />
                 <button className="search"> <BiSearchAlt2 /> </button>
-                <button className={`toggle-collab ${clickedOnce ? 'button-clicked' : ''}`} onClick={() => collabsToggle()}> <BiGroup /> </button>
-                <button className="token-btn" onClick={() => {toast("hello")}}> <MdOutlineToken /> </button>
-                <button className="sign-out" onClick={() => handleSignOut()}> <PiSignOutBold /> </button>
+                <button className={`toggle-collab ${clickedOnce ? 'button-clicked' : ''}`} onClick={() => { collabsToggle(); grop_toast_string() }}> <BiGroup /> </button>
+                <button className="token-btn" onClick={token_toast}> <MdOutlineToken /> </button>
+                <button className="sign-out" onClick={() => { handleSignOut() }}> <PiSignOutBold /> </button>
             </div>
         </div>
     )

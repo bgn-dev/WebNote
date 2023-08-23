@@ -80,7 +80,7 @@ export default function Login() {
         <div className="login_container">
             <h1>WebNote</h1>
             <div className="input_verification">
-                <input type="text" value={token} placeholder="Token" onChange={(e) => handleInputChange(e)} />
+                <input type="token" value={token} placeholder="Token" onChange={(e) => handleInputChange(e)} />
                 <i><MdOutlineToken /></i>
             </div>
             <div className="token_container">
