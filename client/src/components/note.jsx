@@ -128,7 +128,6 @@ export default function NoteApp() {
 
   const handleTextChange = (newNoteText) => {
     if (noteText !== newNoteText) {
-
       console.log("Upload as ", newNoteText);
       debouncedHandleUpload(newNoteText, noteTitle);
     }
