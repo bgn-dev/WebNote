@@ -28,7 +28,7 @@ export default function NoteApp() {
   const noteID = location.state && location.state.noteID;
   const [noteTitle, setNoteTitle] = useState(location.state && location.state.noteTitle);
 
-  const invite_succes_toast = () => toast.success("User invited", {
+  const invite_succes_toast = () => toast.success("User invited.", {
     autoClose: 1000,
     newestOnTop: true,
     closeOnClick: true,
@@ -37,7 +37,16 @@ export default function NoteApp() {
     progress: undefined,
   });
 
-  const invite_error_toast = () => toast.error("User not found", {
+  const invite_error_toast = () => toast.error("User not found.", {
+    autoClose: 1000,
+    newestOnTop: true,
+    closeOnClick: true,
+    pauseOnHover: false,
+    draggable: false,
+    progress: undefined,
+  });
+
+  const invite_own_toast = () => toast.error("You're participating.", {
     autoClose: 1000,
     newestOnTop: true,
     closeOnClick: true,
@@ -75,7 +84,9 @@ export default function NoteApp() {
   }
 
   const handleInvite = async (token) => {
-
+    if (token === localStorage.getItem("currentUser")) {
+      return invite_own_toast();
+    }
     // Check if user exists
     const userRef = doc(firestore, 'users', token);
     const docSnapshot = await getDoc(userRef);
