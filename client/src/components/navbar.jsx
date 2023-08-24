@@ -24,7 +24,7 @@ export default function Navbar({ collabToggle, setCollabToggle }) {
 
     const group_toast = (text) => toast(text, {
         icon: <BiGroup />,
-        autoClose: 1000,
+        autoClose: 500,
         newestOnTop: true,
         closeOnClick: true,
         pauseOnHover: false,
