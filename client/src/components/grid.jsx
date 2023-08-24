@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { collection, onSnapshot, query, where, deleteDoc, doc, addDoc, getDocs, getDoc, setDoc } from "@firebase/firestore"
+import { collection, onSnapshot, query, where, deleteDoc, doc, updateDoc, getDocs, getDoc, setDoc, deleteField } from "@firebase/firestore"
 import { firestore } from '../database/config';
 import { useNavigate } from "react-router-dom";
 
@@ -84,16 +84,24 @@ export default function Grid() {
     }, []);
 
     const handleDelete = async (ID) => {
-        try {
-            // Create a reference to the document using its ID
-            const noteRef = doc(firestore, 'notes', ID);
-
-            // Delete the document
-            await deleteDoc(noteRef);
-
-            console.log('Document deleted successfully.');
-        } catch (error) {
-            console.error('Error deleting document:', error);
+        if (collabToggle === true) {
+            const collabRef = doc(firestore, "collaboration", ID); // Replace 'yourCollectionName'
+            try {
+                await updateDoc(collabRef, {
+                    [currentUser]: deleteField()
+                });
+                console.log('Document deleted successfully.');
+            } catch (error) {
+                console.error('Error deleting field:', error);
+            }
+        } else {
+            try {
+                const noteRef = doc(firestore, 'notes', ID);
+                await deleteDoc(noteRef);   // Delete the document
+                console.log('Document deleted successfully.');
+            } catch (error) {
+                console.error('Error deleting document:', error);
+            }
         }
     };
 
@@ -122,7 +130,7 @@ export default function Grid() {
             // Use the ID of the first document for the second document
             const docRef2 = doc(collabRef, docRef1.id); // Use the same custom ID
             await setDoc(docRef2, {
-                1: currentUser,
+                [currentUser]: currentUser,
             });
             console.log("Both documents uploaded successfully.", docRef1.id, docRef2.id);
             handleNote(docRef1.id, noteTitle); // Navigate to note.jsx
