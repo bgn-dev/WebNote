@@ -12,7 +12,7 @@ db = firestore.client()
 
 app = Flask(__name__, static_url_path='/', static_folder= "../client/build") # assign the frontend to the backend
 CORS(app)
-cors = CORS() # comment out in deployment
+cors = CORS() 
 port = 9999
 
 @app.route("/", defaults={'path':''}) # This catches the root path
@@ -22,7 +22,7 @@ def serve(path):
     return send_from_directory(app.static_folder,'index.html') # return frontend
 
 @app.route('/registrate', methods=['POST'])
-@cross_origin() # comment out in deployment
+@cross_origin() 
 def registerToken(): 
     data = request.get_json()
     doc_ref = db.collection(u'users').document(u'' + data.get('id'))
@@ -30,7 +30,7 @@ def registerToken():
     return jsonify(data)
 
 @app.route('/authenticate', methods=['POST'])
-@cross_origin() # comment out in deployment
+@cross_origin() 
 def authenticate():
     data = request.get_json()
     doc_ref = db.collection(u'users').document(u'' + data.get('id'))
@@ -40,7 +40,7 @@ def authenticate():
     return None
 
 @app.route('/generateToken', methods=['POST'])
-@cross_origin() # comment out in deployment
+@cross_origin() 
 def generateToken(): 
     token = request.get_json()
     characters = string.ascii_letters + string.digits + '.,-*_'

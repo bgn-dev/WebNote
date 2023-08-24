@@ -96,8 +96,12 @@ export default function Grid() {
             }
         } else {
             try {
+                // Delete the document note
                 const noteRef = doc(firestore, 'notes', ID);
-                await deleteDoc(noteRef);   // Delete the document
+                await deleteDoc(noteRef);   
+                // Delete the document collaboration
+                const collabRef = doc(firestore, 'collaboration', ID);
+                await deleteDoc(collabRef);  
                 console.log('Document deleted successfully.');
             } catch (error) {
                 console.error('Error deleting document:', error);
