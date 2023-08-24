@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { updateDoc, getDoc, doc, onSnapshot } from "@firebase/firestore"
 import { firestore } from '../database/config';
 import { useNavigate } from "react-router-dom";
-import { debounce, throttle } from 'lodash'; // Import the debounce function
+import { debounce } from 'lodash'; // Import the debounce function
 
 import ReactQuill from 'react-quill';
 
@@ -13,6 +13,8 @@ import './quill.snow.css';
 import { BiGroup } from 'react-icons/bi';
 import { BsPersonPlus } from 'react-icons/bs';
 import { TfiBackLeft } from 'react-icons/tfi';
+
+import { toast } from 'react-toastify';
 
 
 
@@ -26,7 +28,23 @@ export default function NoteApp() {
   const noteID = location.state && location.state.noteID;
   const [noteTitle, setNoteTitle] = useState(location.state && location.state.noteTitle);
 
+  const invite_succes_toast = () => toast.success("User invited", {
+    autoClose: 1000,
+    newestOnTop: true,
+    closeOnClick: true,
+    pauseOnHover: false,
+    draggable: false,
+    progress: undefined,
+  });
 
+  const invite_error_toast = () => toast.error("User not found", {
+    autoClose: 1000,
+    newestOnTop: true,
+    closeOnClick: true,
+    pauseOnHover: false,
+    draggable: false,
+    progress: undefined,
+  });
 
 
   var toolbarOptions = [
@@ -60,6 +78,14 @@ export default function NoteApp() {
   const handleInvite = async (token) => {
     const collabRef = doc(firestore, 'collaboration', noteID);
 
+    const userRef = doc(firestore, 'users', token); // Replace 'collectionName' with the actual collection name
+    const docSnapshot = await getDoc(userRef);
+
+    if (!docSnapshot.exists()) {
+      console.log(`User with token ${token} doest not exists.`);
+      return invite_error_toast(); // notify user
+    }
+
     let documentData = [];
     let numberOfMembers = 1;
 
@@ -80,6 +106,7 @@ export default function NoteApp() {
 
         console.log('Fetched document:', documentData);
         setInputToken(""); // clear variable
+        invite_succes_toast(); // notify user
       } else {
         console.log('Document does not exist');
       }
@@ -124,7 +151,7 @@ export default function NoteApp() {
     } catch (error) {
       console.error("Error updating document: ", error);
     }
-  }, 10);
+  }, 20);
 
   const handleTextChange = (newNoteText) => {
     if (noteText !== newNoteText) {
