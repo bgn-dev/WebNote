@@ -1,5 +1,7 @@
 # Webnote
 
+[![Bildschirmfoto-2023-08-24-um-18-04-49.png](https://i.postimg.cc/6qm2xq8S/Bildschirmfoto-2023-08-24-um-18-04-49.png)](https://postimg.cc/xNLTK0yy)
+
 🎉 This project allows users to take real time notes in a text editor.
 
 ## Features
