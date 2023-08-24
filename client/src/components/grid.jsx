@@ -32,6 +32,9 @@ export default function Grid() {
 
     const [collabToggle, setCollabToggle] = useState(false);
 
+    /**
+     * Fetch documents where user collab
+     */
     const searchDocumentsForCurrentUser = async () => {
         try {
             const querySnapshot = await getDocs(collabRef);
@@ -40,9 +43,9 @@ export default function Grid() {
             querySnapshot.forEach((doc) => {
                 const data = doc.data();
 
-                // Check if currentUser is listed in any field value
+                // Check if currentUser is listed in any field value and check if there is more then one user contrubuting
                 Object.values(data).forEach((fieldValue) => {
-                    if (fieldValue === currentUser) {
+                    if (fieldValue === currentUser && Object.keys(data).length > 1) {
                         newCollabs.push(doc.id);
                     }
                 });
@@ -135,7 +138,7 @@ export default function Grid() {
 
     /**
      * Update the variable "--div_size_of_notes_column" inside of grid.css
-     * Subtract 53 to fit the delete icon inside the div
+     * Default: Subtract 53 to fit the delete icon inside the div
      */
     const updateColumnSize = () => {
         if (ref.current) {
