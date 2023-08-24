@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { updateDoc, getDoc, doc, onSnapshot } from "@firebase/firestore"
+import { updateDoc, getDoc, doc, onSnapshot, deleteField } from "@firebase/firestore"
 import { firestore } from '../database/config';
 import { useNavigate } from "react-router-dom";
 import { debounce } from 'lodash'; // Import the debounce function
@@ -46,7 +46,6 @@ export default function NoteApp() {
     progress: undefined,
   });
 
-
   var toolbarOptions = [
     ['bold', 'italic', 'underline', 'strike'],        // toggled buttons
     ['blockquote', 'code-block'],
@@ -76,35 +75,29 @@ export default function NoteApp() {
   }
 
   const handleInvite = async (token) => {
-    const collabRef = doc(firestore, 'collaboration', noteID);
 
-    const userRef = doc(firestore, 'users', token); // Replace 'collectionName' with the actual collection name
+    // Check if user exists
+    const userRef = doc(firestore, 'users', token);
     const docSnapshot = await getDoc(userRef);
-
     if (!docSnapshot.exists()) {
       console.log(`User with token ${token} doest not exists.`);
       return invite_error_toast(); // notify user
     }
 
+    const collabRef = doc(firestore, 'collaboration', noteID);
     let documentData = [];
-    let numberOfMembers = 1;
 
     try {
       // Fetch the document data
       const documentSnapshot = await getDoc(collabRef);
-
       if (documentSnapshot.exists()) {
         documentData = documentSnapshot.data();
-        numberOfMembers = numberOfMembers + Object.keys(documentData).length;
-        documentData[numberOfMembers] = token;
-
-        console.log(documentData)
-        console.log(numberOfMembers)
+        documentData[token] = token;
 
         // Create a new document with the modified data
         await updateDoc(collabRef, documentData);
 
-        console.log('Fetched document:', documentData);
+        console.log('Updated document:', documentData);
         setInputToken(""); // clear variable
         invite_succes_toast(); // notify user
       } else {
@@ -112,6 +105,16 @@ export default function NoteApp() {
       }
     } catch (error) {
       console.error('Error fetching document:', error);
+    }
+
+    const noteRef = doc(firestore, 'notes', noteID);
+    try {
+      await updateDoc(noteRef, {
+        user: deleteField()
+      });
+      console.log('Document deleted successfully.');
+    } catch (error) {
+      console.error('Error deleting field:', error);
     }
   };
 
@@ -170,7 +173,7 @@ export default function NoteApp() {
     } catch (error) {
       console.error("Error updating document: ", error);
     }
-  }
+  };
 
 
   return (
