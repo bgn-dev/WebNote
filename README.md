@@ -2,27 +2,27 @@
 
 [![Bildschirmfoto-2023-08-24-um-18-04-49.png](https://i.postimg.cc/6qm2xq8S/Bildschirmfoto-2023-08-24-um-18-04-49.png)](https://postimg.cc/xNLTK0yy)
 
-🎉 This project allows users to take real-time notes in a text editor.
+🎉 This project allows users to take notes in real time in a text editor. 🎉
 
-## Features
+## Features include
 
-- Unique token for identification, created randomly
-- User is able to create a note
-- User is able to invite other users into the note
-- Notes are differentiated between shared and non-shared notes
-- Current mode is changeable through the UI
-- Notes are synchronized between the frontend and database
+- Unique, randomly generated token for identification
+- User can create a note
+- User can invite other users into the note
+- Notes are distinguished between shared and non-shared notes
+- Current mode can be changed via the UI
 
 ## Architecture
 
-The project utilizes React/JavaScript on the frontend and Flask on the backend.  
+The project uses React/JavaScript on the frontend and Flask on the backend.  
 The database is built using a real-time database Firestore.
+Notes are synchronised between frontend and database
 
-### How to run this App as localhost
-Change routes in the frontend to `http://localhost:3000/desired_route`.  
-Run the flask server with `flask run`.
+### To run this app as localhost
+Change the routes in the frontend to `http://localhost:3000/desired_route`.  
+Strat the flask server with `flask run`.
 
 ### For any changes
 Run `npm run start` inside the client folder, but before saving your local changes.  
-For the deployment, you need to run `npm run build`, so the flask server can access the newest build.
+For the deployment, you will need to run `npm run build`, so that the flas server has access to the latest build.
 
