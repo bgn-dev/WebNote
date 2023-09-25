@@ -4,7 +4,6 @@ import './App.css';
 import Login from './components/login'
 import Grid from './components/grid'
 import Note from './components/note'
-import Collab from './components/collab'
 import Popup from './components/popup'
 
 import { ToastContainer } from 'react-toastify';
@@ -35,7 +34,6 @@ function App() {
             <Route path="/popup" element={<Popup />} />
             <Route path="/grid" element={<Grid />} />
             <Route path="/note" element={<Note />} />
-            <Route path="/collab" element={<Collab />} />
           </Routes>
         </BrowserRouter>
       </div>
