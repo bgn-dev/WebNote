@@ -1,8 +1,3 @@
-
-
-.navbar-container {
-}
-
 .navbar {
     display: flex;
     justify-content: space-between;
@@ -111,11 +106,6 @@
     background-color: #fff;
     border-radius: 0.25rem;
     box-shadow: 0 20px 40px -14px rgba(0, 0, 0, 0.25);
-}
-
-/* Style the dropdown menu options */
-.dropdown-content li {
-
 }
 
 /* Change the background color of dropdown items when hovered */
