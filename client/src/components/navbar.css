@@ -1,25 +1,49 @@
-:root {
-    /* customize toast notify */
-    --toastify-color-progress-light: linear-gradient(to right, #a784f8, #e9e4f0);
 
-    &--top-right {
-        top: 3em;
-        right: 1em;
-    }
-}
 
 .navbar-container {
-    margin-bottom: 15px;
 }
 
 .navbar {
     display: flex;
     justify-content: space-between;
     background-image: linear-gradient(to right, #d3cce3, #e9e4f0);
-    height: 10vh;
     align-items: center;
     padding: 1.5rem;
     gap: 1rem;
+}
+
+@media only screen and (max-width: 600px) {
+
+    .navbar input {
+        display: none;
+    }
+
+    .search-btn {
+        display: none;
+    }
+}
+
+@media only screen and (max-width: 768px) {
+
+    .toggle-collab-btn {
+        display: none;
+    }
+
+    .token-btn {
+        display: none;
+    }
+
+    .sign-out-btn {
+        display: none;
+    }
+
+    .compact-navbar-btn {
+        display: unset !important;
+    }
+
+    .dropdown-menu {
+        display: unset !important;
+    }
 }
 
 .navbar-logo-container {
@@ -47,22 +71,11 @@
 
 .navbar input {
     width: 100%;
+    min-width: 105px;
     height: 45px;
     border-radius: 0.25rem;
     padding: 4px;
     padding-left: 1rem;
-    box-shadow: 0 20px 40px -14px rgba(0, 0, 0, 0.25);
-}
-
-.search {
-    border-radius: 0.25rem;
-    border: none;
-    box-shadow: 0 20px 40px -14px rgba(0, 0, 0, 0.25);
-}
-
-.toggle-collab {
-    border-radius: 0.25rem;
-    border: none;
     box-shadow: 0 20px 40px -14px rgba(0, 0, 0, 0.25);
 }
 
@@ -71,18 +84,45 @@
     color: wheat;
 }
 
-.token-btn {
-    border-radius: 0.25rem;
-    border: none;
-    box-shadow: 0 20px 40px -14px rgba(0, 0, 0, 0.25);
-}
-
-.sign-out {
-    border-radius: 0.25rem;
-    border: none;
-    box-shadow: 0 20px 40px -14px rgba(0, 0, 0, 0.25);
-}
-
 .navbar svg {
     font-size: 25px;
+}
+
+.compact-navbar-btn {
+    display: none;
+    margin: 0.2rem;
+    /* Better user experience, hovering covers a bigger area*/
+    border-radius: 0.25rem;
+    border: none;
+    box-shadow: 0 20px 40px -14px rgba(0, 0, 0, 0.25);
+}
+
+.dropdown-menu {
+    display: none;
+}
+
+.dropdown-content {
+    display: none;
+    position: absolute;
+    right: 5rem;
+    top: 0.6rem;
+    padding: 0.5rem;
+    margin: 1.5rem;
+    background-color: #fff;
+    border-radius: 0.25rem;
+    box-shadow: 0 20px 40px -14px rgba(0, 0, 0, 0.25);
+}
+
+/* Style the dropdown menu options */
+.dropdown-content li {
+
+}
+
+/* Change the background color of dropdown items when hovered */
+.dropdown-content li:hover {
+    background-color: #fff;
+}
+
+.dropdown-menu:hover .dropdown-content {
+    display: unset !important;
 }
