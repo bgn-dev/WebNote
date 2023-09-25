@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { PiSignOutBold } from 'react-icons/pi';
 import { BiSearchAlt2 } from 'react-icons/bi';
 import { BiGroup } from 'react-icons/bi';
+import { BiMenu } from 'react-icons/bi';
 import { MdOutlineToken } from 'react-icons/md';
 
 import { toast } from 'react-toastify';
@@ -24,7 +25,7 @@ export default function Navbar({ collabToggle, setCollabToggle }) {
 
     const group_toast = (text) => toast(text, {
         icon: <BiGroup />,
-        autoClose: 500,
+        autoClose: 250,
         newestOnTop: true,
         closeOnClick: true,
         pauseOnHover: false,
@@ -62,10 +63,24 @@ export default function Navbar({ collabToggle, setCollabToggle }) {
                     </h1>
                 </div>
                 <input type="token" placeholder="Search" />
-                <button className="search"> <BiSearchAlt2 /> </button>
-                <button className={`toggle-collab ${clickedOnce ? 'button-clicked' : ''}`} onClick={() => { collabsToggle(); grop_toast_string() }}> <BiGroup /> </button>
+                <button className="search-btn"> <BiSearchAlt2 /> </button>
+                <button className={`toggle-collab-btn ${clickedOnce ? 'button-clicked' : ''}`} onClick={() => { collabsToggle(); grop_toast_string() }}> <BiGroup /> </button>
                 <button className="token-btn" onClick={token_toast}> <MdOutlineToken /> </button>
-                <button className="sign-out" onClick={() => { handleSignOut() }}> <PiSignOutBold /> </button>
+                <button className="sign-out-btn" onClick={() => { handleSignOut() }}> <PiSignOutBold /> </button>
+                <div className="dropdown-menu">
+                    <button className="compact-navbar-btn" > <BiMenu /> </button>
+                    <ul className="dropdown-content">
+                        <li>
+                            <button className={`toggle-collab-2 ${clickedOnce ? 'button-clicked' : ''}`} onClick={() => { collabsToggle(); grop_toast_string() }}> <BiGroup /> </button>
+                        </li>
+                        <li>
+                            <button className="token-btn-2" onClick={token_toast}> <MdOutlineToken /> </button>
+                        </li>
+                        <li>
+                            <button className="sign-out-2" onClick={() => { handleSignOut() }}> <PiSignOutBold /> </button>
+                        </li>
+                    </ul>
+                </div>
             </div>
         </div>
     )

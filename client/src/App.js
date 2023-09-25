@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as BrowserRouter, Route, Routes } from "react-router-dom"
+import { BrowserRouter, Route, Routes } from "react-router-dom"
 import './App.css';
 import Login from './components/login'
 import Grid from './components/grid'
