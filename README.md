@@ -20,7 +20,7 @@ Notes are synchronised between frontend and database
 
 ### To run this app as localhost
 Change the routes in the frontend to `http://localhost:3000/desired_route`.  
-Strat the flask server with `flask run`.
+Strat the Flask server with `flask run`.
 
 ### For any changes
 Run `npm run start` inside the client folder, but before saving your local changes.  
