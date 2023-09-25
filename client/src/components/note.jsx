@@ -29,7 +29,7 @@ export default function NoteApp() {
   const [noteTitle, setNoteTitle] = useState(location.state && location.state.noteTitle);
 
   const invite_succes_toast = () => toast.success("User invited.", {
-    autoClose: 1000,
+    autoClose: 500,
     newestOnTop: true,
     closeOnClick: true,
     pauseOnHover: false,
@@ -38,7 +38,7 @@ export default function NoteApp() {
   });
 
   const invite_error_toast = () => toast.error("User not found.", {
-    autoClose: 1000,
+    autoClose: 500,
     newestOnTop: true,
     closeOnClick: true,
     pauseOnHover: false,
@@ -47,7 +47,16 @@ export default function NoteApp() {
   });
 
   const invite_own_toast = () => toast.error("You're participating.", {
-    autoClose: 1000,
+    autoClose: 500,
+    newestOnTop: true,
+    closeOnClick: true,
+    pauseOnHover: false,
+    draggable: false,
+    progress: undefined,
+  });
+
+  const invite_valid_token_toast = () => toast.info("Enter a valid token.", {
+    autoClose: 500,
     newestOnTop: true,
     closeOnClick: true,
     pauseOnHover: false,
@@ -84,6 +93,11 @@ export default function NoteApp() {
   }
 
   const handleInvite = async (token) => {
+    if (token === "") {
+      return invite_valid_token_toast();
+    }
+
+    //check whether is the current user
     if (token === localStorage.getItem("currentUser")) {
       return invite_own_toast();
     }
