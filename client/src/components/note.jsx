@@ -4,6 +4,8 @@ import { updateDoc, getDoc, doc, onSnapshot, deleteField } from "@firebase/fires
 import { firestore } from '../database/config';
 import { useNavigate } from "react-router-dom";
 import { debounce } from 'lodash'; // Import the debounce function
+import Axios from 'axios';
+
 
 import ReactQuill from 'react-quill';
 
@@ -149,10 +151,10 @@ export default function NoteApp() {
     const unsubscribe = onSnapshot(noteRef, (docSnapshot) => {
       if (docSnapshot.exists()) {
         const data = docSnapshot.data();
-        console.log("Fetched as ", data.note);
+        //console.log("Fetched as ", data.note);
         // Only update noteText if it's different from fetched data
         if (noteText !== data.note) {
-          console.log("Fetched as ", data.note);
+          //console.log("Fetched as ", data.note);
           setNoteText(data.note);
         }
         // Always update noteTitle
@@ -175,7 +177,7 @@ export default function NoteApp() {
         note: newNoteText,
         title: newNoteTitle,
       });
-      console.log("Document successfully updated!");
+      //console.log("Document successfully updated!");
     } catch (error) {
       console.error("Error updating document: ", error);
     }
@@ -183,7 +185,7 @@ export default function NoteApp() {
 
   const handleTextChange = (newNoteText) => {
     if (noteText !== newNoteText) {
-      console.log("Upload as ", newNoteText);
+      //console.log("Upload as ", newNoteText);
       debouncedHandleUpload(newNoteText, noteTitle);
     }
   };
@@ -194,12 +196,39 @@ export default function NoteApp() {
       await updateDoc(noteRef, {
         title: newNoteTitle,
       });
-      console.log("Document successfully updated!");
+      //console.log("Document successfully updated!");
     } catch (error) {
       console.error("Error updating document: ", error);
     }
   };
 
+  document.addEventListener("DOMContentLoaded", function () {
+    var divElement = document.getElementsByClassName("ql-editor");
+    if (divElement) {
+      var plainText = divElement.innerText;
+      console.log("Text:", plainText);
+    } else {
+      console.log("Element not found.");
+    }
+  });
+
+  const handlePlainText = () => {
+    var divElement = document.querySelector(".ql-editor"); // Select the first element with the class "ql-editor"
+
+    if (divElement) {
+      var plainText = divElement.innerText;
+      console.log({ Plaintext: plainText, Length: plainText.length });
+      Axios.post("http://localhost:5000/sync", {
+        plaintext: plainText,
+        length: plainText.length
+      })
+        .then((response) => {
+          console.log(response.data);
+        });
+    } else {
+      console.log("Element not found.");
+    }
+  }
 
   return (
     <div className="main_container">
@@ -216,7 +245,7 @@ export default function NoteApp() {
         modules={module}
         theme="snow"
         value={noteText}
-        onChange={handleTextChange}
+        onChange={() => { handleTextChange(noteText); handlePlainText() }}
       />
     </div>
   );

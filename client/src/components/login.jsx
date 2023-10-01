@@ -19,9 +19,11 @@ export default function Login() {
             handleSignUp();
         }
     }
+
     // initiate the post request via axios for the login
     const handleSignUp = () => {
-        Axios.post("https://neat-note-4478e343a4f5.herokuapp.com/registrate", {
+        //Axios.post("https://neat-note-4478e343a4f5.herokuapp.com/registrate", {
+        Axios.post("http://localhost:5000/registrate", {
             id: token,
         })
             .then((response) => {
@@ -31,12 +33,12 @@ export default function Login() {
             })
             .catch((error) => {
                 console.error("An error occurred:", error);
-            })
-            ;
+            });
     };
 
     const handleSignIn = () => {
-        Axios.post("https://neat-note-4478e343a4f5.herokuapp.com/authenticate", {
+        //Axios.post("https://neat-note-4478e343a4f5.herokuapp.com/authenticate", {
+        Axios.post("http://localhost:5000/authenticate", {
             id: token,
         })
             .then((response) => {
@@ -51,7 +53,8 @@ export default function Login() {
     }
 
     const generateToken = () => {
-        Axios.post("https://neat-note-4478e343a4f5.herokuapp.com/generateToken", {
+        //Axios.post("https://neat-note-4478e343a4f5.herokuapp.com/generateToken", {
+        Axios.post("http://localhost:5000/generateToken", {
             id: token,
         })
             .then((response) => {
