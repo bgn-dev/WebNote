@@ -4,16 +4,14 @@ import os, secrets, string
 import firebase_admin
 from firebase_admin import credentials, firestore
 
-#cred = credentials.Certificate(os.getcwd() + "/key.json") # use for localhost
-cred = credentials.Certificate(os.getcwd() + "/server/key.json") # use for deployment
+cred = credentials.Certificate(os.getcwd() + "/key.json") # use for localhost
+#cred = credentials.Certificate(os.getcwd() + "/server/key.json") # use for deployment
 firebase_admin.initialize_app(cred)
 db = firestore.client()
 
 
 app = Flask(__name__, static_url_path='/', static_folder= "../client/build") # assign the frontend to the backend
 CORS(app)
-cors = CORS() 
-port = 9999
 
 @app.route("/", defaults={'path':''}) # This catches the root path
 @app.route("/<string:path>") # This catches a single URL segment (portion between slashes)
@@ -51,3 +49,10 @@ def generateToken():
         generateToken()
     else:
         return jsonify(token)
+    
+@app.route('/sync', methods=['POST'])
+@cross_origin() 
+def plaintext(): 
+    plaintext = request.get_json()
+    print(plaintext)
+    return jsonify("Yes")
