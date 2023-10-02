@@ -4,14 +4,17 @@ import os, secrets, string
 import firebase_admin
 from firebase_admin import credentials, firestore
 
+app = Flask(__name__, static_url_path='/', static_folder= "../client/build") # assign the frontend to the backend
+CORS(app)
+
+# database configuration
 cred = credentials.Certificate(os.getcwd() + "/key.json") # use for localhost
 #cred = credentials.Certificate(os.getcwd() + "/server/key.json") # use for deployment
 firebase_admin.initialize_app(cred)
 db = firestore.client()
 
+predecessor_len = 0
 
-app = Flask(__name__, static_url_path='/', static_folder= "../client/build") # assign the frontend to the backend
-CORS(app)
 
 @app.route("/", defaults={'path':''}) # This catches the root path
 @app.route("/<string:path>") # This catches a single URL segment (portion between slashes)
@@ -52,7 +55,20 @@ def generateToken():
     
 @app.route('/sync', methods=['POST'])
 @cross_origin() 
-def plaintext(): 
+def inputOperation(): 
+    global predecessor_len
+    successor_len = predecessor_len
+
     plaintext = request.get_json()
-    print(plaintext)
-    return jsonify("Yes")
+    predecessor_len = plaintext.get("length")
+    
+    if successor_len < predecessor_len:
+        return insert()
+    else:
+        return delete()
+
+def insert():
+    return "insert"
+
+def delete():
+    return "delete"

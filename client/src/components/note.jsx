@@ -26,6 +26,8 @@ export default function NoteApp() {
   const [noteText, setNoteText] = useState("");
   const [inputToken, setInputToken] = useState("");
 
+  let plaintext = "";
+
   const location = useLocation();
   const noteID = location.state && location.state.noteID;
   const [noteTitle, setNoteTitle] = useState(location.state && location.state.noteTitle);
@@ -145,6 +147,7 @@ export default function NoteApp() {
     }
   };
 
+  
   useEffect(() => {
     const noteRef = doc(firestore, 'notes', noteID);
     // Set up a real-time listener for the document
@@ -202,34 +205,38 @@ export default function NoteApp() {
     }
   };
 
-  document.addEventListener("DOMContentLoaded", function () {
-    var divElement = document.getElementsByClassName("ql-editor");
-    if (divElement) {
-      var plainText = divElement.innerText;
-      console.log("Text:", plainText);
-    } else {
-      console.log("Element not found.");
-    }
-  });
-
-  const handlePlainText = () => {
+  useEffect(() => {
+    getPlainText();
+    handlePlainText();
+    console.log(plaintext)
+  }, []);
+  
+  // get plain text from the editor
+  function getPlainText() {
     var divElement = document.querySelector(".ql-editor"); // Select the first element with the class "ql-editor"
-
     if (divElement) {
       var plainText = divElement.innerText;
-      console.log({ Plaintext: plainText, Length: plainText.length });
-      Axios.post("http://localhost:5000/sync", {
-        plaintext: plainText,
-        length: plainText.length
-      })
-        .then((response) => {
-          console.log(response.data);
-        });
+      console.log(plainText)
+      plaintext = plainText;
     } else {
       console.log("Element not found.");
     }
   }
+  
+  const handlePlainText = () => {
+    getPlainText();
+    console.log({ Plaintext: plaintext, Length: plaintext.length });
+    Axios.post("http://localhost:5000/sync", {
+      plaintext: plaintext,
+      length: plaintext.length
+    })
+    .then((response) => {
+      console.log(response.data);
+    });
+  }
+  
 
+  
   return (
     <div className="main_container">
       <div className="group-container">
@@ -245,7 +252,7 @@ export default function NoteApp() {
         modules={module}
         theme="snow"
         value={noteText}
-        onChange={() => { handleTextChange(noteText); handlePlainText() }}
+        onChange={(newNoteText) => { handleTextChange(newNoteText); handlePlainText() }}
       />
     </div>
   );
