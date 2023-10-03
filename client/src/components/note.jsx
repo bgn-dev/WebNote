@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { updateDoc, getDoc, doc, onSnapshot, deleteField } from "@firebase/firestore"
 import { firestore } from '../database/config';
@@ -27,6 +27,8 @@ export default function NoteApp() {
   const [inputToken, setInputToken] = useState("");
 
   let plaintext = "";
+  const [counter, setCounter] = useState(0);
+  const [pressedKey, setPressedKey] = useState(null);
 
   const location = useLocation();
   const noteID = location.state && location.state.noteID;
@@ -208,7 +210,6 @@ export default function NoteApp() {
   useEffect(() => {
     getPlainText();
     handlePlainText();
-    console.log(plaintext)
   }, []);
   
   // get plain text from the editor
@@ -216,27 +217,61 @@ export default function NoteApp() {
     var divElement = document.querySelector(".ql-editor"); // Select the first element with the class "ql-editor"
     if (divElement) {
       var plainText = divElement.innerText;
-      console.log(plainText)
       plaintext = plainText;
     } else {
       console.log("Element not found.");
     }
   }
   
+  
   const handlePlainText = () => {
     getPlainText();
-    console.log({ Plaintext: plaintext, Length: plaintext.length });
+    console.log({ Plaintext: plaintext, Length: plaintext.length, opID: counter + "@" + localStorage.getItem("currentUser"), character: pressedKey });
     Axios.post("http://localhost:5000/sync", {
       plaintext: plaintext,
-      length: plaintext.length
+      length: plaintext.length,
+      counter: counter,
+      opID: counter + "@" + localStorage.getItem("currentUser"),
+      character: pressedKey
     })
     .then((response) => {
       console.log(response.data);
     });
   }
   
+  useEffect(() => {
+    const handleKeyPress = (event) => {
+      // Handle the key press event here
+      console.log('Key pressed:', event.key);
+      setPressedKey(event.key)
+      setCounter((counter) => counter + 1);
+    };
 
+    document.addEventListener('keydown', handleKeyPress);
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyPress);
+    };
+  }, []);
   
+  const quillRef = useRef(null);
+  const array = [];
+  
+  // track the cursor position 
+  useEffect(() => {
+    if (quillRef.current) {
+      quillRef.current.getEditor().on('selection-change', (range) => {
+        if (range) {
+          const cursorPosition = range.index;
+          console.log('Cursor position:', cursorPosition);
+        }
+      });
+    }
+  }, []);
+
+
+
+
   return (
     <div className="main_container">
       <div className="group-container">
@@ -249,10 +284,11 @@ export default function NoteApp() {
         <button className="back_button" onClick={handleGoBack}> <TfiBackLeft /> </button>
       </div>
       <ReactQuill
+        ref={quillRef}
         modules={module}
         theme="snow"
         value={noteText}
-        onChange={(newNoteText) => { handleTextChange(newNoteText); handlePlainText() }}
+        onChange={(newNoteText) => { handleTextChange(newNoteText); handlePlainText();  }}
       />
     </div>
   );
