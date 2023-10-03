@@ -4,6 +4,12 @@ import os, secrets, string
 import firebase_admin
 from firebase_admin import credentials, firestore
 
+from linked_list import LinkedList
+
+# Create an instance of the LinkedList for the text
+richtext = LinkedList()
+
+
 app = Flask(__name__, static_url_path='/', static_folder= "../client/build") # assign the frontend to the backend
 CORS(app)
 
@@ -14,6 +20,7 @@ firebase_admin.initialize_app(cred)
 db = firestore.client()
 
 predecessor_len = 0
+
 
 
 @app.route("/", defaults={'path':''}) # This catches the root path
@@ -59,15 +66,17 @@ def inputOperation():
     global predecessor_len
     successor_len = predecessor_len
 
-    plaintext = request.get_json()
-    predecessor_len = plaintext.get("length")
-    
+    operation = request.get_json()
+    predecessor_len = operation.get("length")
+    print(operation)
     if successor_len < predecessor_len:
-        return insert()
+        return insert(operation)
     else:
         return delete()
 
-def insert():
+def insert(operation):
+    #richtext.insert(operation.get("character"), operation.get("opID"), "0@a")  
+    #richtext.display()
     return "insert"
 
 def delete():
