@@ -9,6 +9,8 @@ import { BiGroup } from 'react-icons/bi';
 import { BiMenu } from 'react-icons/bi';
 import { MdOutlineToken } from 'react-icons/md';
 
+import { useAuth } from '../firebase/auth';
+
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import './navbar.css'
@@ -18,6 +20,7 @@ export default function Navbar({ collabToggle, setCollabToggle }) {
     const navigate = useNavigate();
     const [clickedOnce, setClickedOnce] = useState(false);
 
+    const { logout } = useAuth();
 
     const token_toast = () => toast(localStorage.getItem("currentUser"), {
         icon: <MdOutlineToken />,
@@ -41,11 +44,6 @@ export default function Navbar({ collabToggle, setCollabToggle }) {
         }
     }
 
-    function handleSignOut() {
-        localStorage.removeItem("currentUser");
-        navigate("/");
-    }
-
     function collabsToggle() {
         setCollabToggle(!collabToggle);
         console.log(!collabToggle)
@@ -53,6 +51,14 @@ export default function Navbar({ collabToggle, setCollabToggle }) {
         setClickedOnce(!clickedOnce);
     }
 
+    const handleLogout = async () => {
+        try {
+            await logout();
+            navigate('/');
+        } catch (error) {
+            console.error('Failed to log out:', error);
+        }
+    };
 
     return (
         <div className="navbar-container">
@@ -66,7 +72,7 @@ export default function Navbar({ collabToggle, setCollabToggle }) {
                 <button className="search-btn"> <BiSearchAlt2 /> </button>
                 <button className={`toggle-collab-btn ${clickedOnce ? 'button-clicked' : ''}`} onClick={() => { collabsToggle(); grop_toast_string() }}> <BiGroup /> </button>
                 <button className="token-btn" onClick={token_toast}> <MdOutlineToken /> </button>
-                <button className="sign-out-btn" onClick={() => { handleSignOut() }}> <PiSignOutBold /> </button>
+                <button className="sign-out-btn" onClick={handleLogout}> <PiSignOutBold /> </button>
                 <div className="dropdown-menu">
                     <button className="compact-navbar-btn" > <BiMenu /> </button>
                     <ul className="dropdown-content">
@@ -77,7 +83,7 @@ export default function Navbar({ collabToggle, setCollabToggle }) {
                             <button className="token-btn-2" onClick={token_toast}> <MdOutlineToken /> </button>
                         </li>
                         <li>
-                            <button className="sign-out-2" onClick={() => { handleSignOut() }}> <PiSignOutBold /> </button>
+                            <button className="sign-out-2" onClick={handleLogout}> <PiSignOutBold /> </button>
                         </li>
                     </ul>
                 </div>
