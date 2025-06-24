@@ -1,21 +1,22 @@
-  import React from 'react';
-  import { BrowserRouter, Route, Routes } from "react-router-dom"
+import { BrowserRouter, Route, Routes } from "react-router-dom"
 
-  import { GoogleOAuthProvider } from '@react-oauth/google';
+import './App.css';
+import Login from './components/login'
+import Grid from './components/grid'
+import Note from './components/note'
+import Popup from './components/popup'
+import ProtectedRoute from "./components/common/protectedRoute";
+import { AuthProvider } from './firebase/auth';
 
-  import './App.css';
-  import Login from './components/login'
-  import Grid from './components/grid'
-  import Note from './components/note'
-  import Popup from './components/popup'
+// Packages
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
-  import { ToastContainer } from 'react-toastify';
-  import 'react-toastify/dist/ReactToastify.css';
-
-  function App() {
-    return (
-      <div className="App">
-        <div className="App-Header">
+function App() {
+  return (
+    <div className="App">
+      <div className="App-Header">
+        <AuthProvider>
           <BrowserRouter>
             <ToastContainer
               position="top-right"
@@ -31,21 +32,26 @@
               theme="light"
             />
             <Routes>
-              <Route path="/"
-                element={
-                  <GoogleOAuthProvider clientId='785362641992-too476gno7bvkmdbs4e6qi33fbr3aggb.apps.googleusercontent.com'>
-                    <Login />
-                  </GoogleOAuthProvider>
-                }
-              />
+              <Route path="/" element={<Login />} />
               <Route path="/popup" element={<Popup />} />
-              <Route path="/grid" element={<Grid />} />
-              <Route path="/note" element={<Note />} />
+              <Route path="/grid" element={
+                <ProtectedRoute>
+                  <Grid />
+                </ProtectedRoute>
+              }
+              />
+              <Route path="/note" element={
+                <ProtectedRoute>
+                  <Note />
+                </ProtectedRoute>
+              }
+              />
             </Routes>
           </BrowserRouter>
-        </div>
+        </AuthProvider>
       </div>
-    );
-  }
+    </div>
+  );
+}
 
-  export default App;
+export default App;
