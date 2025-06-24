@@ -1,12 +1,10 @@
-import React, { useEffect, useState } from 'react'
-import { collection, getDocs } from "@firebase/firestore"
-import { firestore } from '../database/config';
+import { useEffect, useState } from 'react'
 
+import { firestore } from '../database/config';
+import { collection, getDocs } from "@firebase/firestore"
 
 export default function Collab() {
-
-  const [collabs, setCollabs] = useState([]); // Use state to manage the notes array
-
+  const [collabs, setCollabs] = useState([]);
 
   const currentUser = localStorage.getItem("currentUser");
   const collabRef = collection(firestore, "collaboration");
@@ -33,7 +31,6 @@ export default function Collab() {
         console.error("Error getting documents:", error);
       }
     };
-
     searchDocumentsForCurrentUser();
     console.log(collabs)
   }, []);

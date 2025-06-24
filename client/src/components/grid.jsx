@@ -1,20 +1,21 @@
-import React, { useEffect, useRef, useState } from 'react'
-import { collection, onSnapshot, query, where, deleteDoc, doc, updateDoc, getDocs, getDoc, setDoc, deleteField } from "@firebase/firestore"
-import { firestore } from '../firebase/config';
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from "react-router-dom";
 
-import './grid.css'
+import { firestore } from '../firebase/config';
+import { collection, onSnapshot, query, where, deleteDoc, doc, updateDoc, getDocs, getDoc, setDoc, deleteField } from "@firebase/firestore"
+
+import Navbar from './navbar';
+import { useAuth } from '../firebase/auth';
 
 import { MdOutlineDeleteForever } from 'react-icons/md';
 import { LuFilePlus } from 'react-icons/lu';
 import { MdOutlineUploadFile } from 'react-icons/md';
 
-import Navbar from './navbar';
-
-
+import './grid.css'
 
 export default function Grid() {
     const navigate = useNavigate();
+    const { user } = useAuth();
 
     const [notes, setNotes] = useState([]); // Use state to manage the notes array
     const [collabs, setCollabs] = useState([]); // Use state to manage the notes array
@@ -22,7 +23,7 @@ export default function Grid() {
     const [noteTitle, setNoteTitle] = useState("");
     const [toggle, setToggle] = useState(true);
 
-    const currentUser = localStorage.getItem("currentUser");
+    const currentUser = user?.uid
     const colRef = collection(firestore, "notes"); // reference to the db
     const docQuery = query(colRef, where("user", "==", currentUser)); // Query only the docs uploaded by the currentUser
 
@@ -68,9 +69,10 @@ export default function Grid() {
         }
     };
 
-
     // Subscribe to changes within the database
     useEffect(() => {
+        if (!currentUser || !docQuery) return; // Wait for authenticated user
+
         const unsubscribe = onSnapshot(docQuery, (snapshot) => {
             const updatedNotes = snapshot.docs.map((doc) => ({
                 ...doc.data(),
@@ -81,7 +83,7 @@ export default function Grid() {
         });
         // Unsubscribe from the snapshot listener on component unmount
         return () => unsubscribe();
-    }, []);
+    }, [currentUser]);
 
     const handleDelete = async (ID) => {
         if (collabToggle === true) {
@@ -98,10 +100,10 @@ export default function Grid() {
             try {
                 // Delete the document note
                 const noteRef = doc(firestore, 'notes', ID);
-                await deleteDoc(noteRef);   
+                await deleteDoc(noteRef);
                 // Delete the document collaboration
                 const collabRef = doc(firestore, 'collaboration', ID);
-                await deleteDoc(collabRef);  
+                await deleteDoc(collabRef);
                 console.log('Document deleted successfully.');
             } catch (error) {
                 console.error('Error deleting document:', error);
@@ -147,7 +149,6 @@ export default function Grid() {
         document.documentElement.style.setProperty('--active_title', "6rem"); // changes the padding value from var inside grid.css
     }
 
-
     /**
      * Update the variable "--div_size_of_notes_column" inside of grid.css
      * Default: Subtract 53 to fit the delete icon inside the div
@@ -175,8 +176,6 @@ export default function Grid() {
             window.removeEventListener('resize', updateColumnSize);
         };
     }, []);
-
-
 
     return (
         <div>

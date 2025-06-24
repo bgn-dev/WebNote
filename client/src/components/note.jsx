@@ -1,24 +1,22 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useLocation } from 'react-router-dom';
-import { updateDoc, getDoc, doc, onSnapshot, deleteField } from "@firebase/firestore"
+import { useState, useEffect, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+
+import { toast } from 'react-toastify';
+
 import { firestore } from '../firebase/config';
-import { useNavigate } from "react-router-dom";
-import { debounce } from 'lodash'; // Import the debounce function
+import { updateDoc, getDoc, doc, onSnapshot, deleteField } from "@firebase/firestore"
+
+import { debounce } from 'lodash';
 import Axios from 'axios';
 
-
 import ReactQuill from 'react-quill';
-
-import './note.css';
-import './quill.snow.css';
 
 import { BiGroup } from 'react-icons/bi';
 import { BsPersonPlus } from 'react-icons/bs';
 import { TfiBackLeft } from 'react-icons/tfi';
 
-import { toast } from 'react-toastify';
-
-
+import './note.css';
+import './quill.snow.css';
 
 export default function NoteApp() {
   const navigate = useNavigate();
@@ -103,10 +101,11 @@ export default function NoteApp() {
       return invite_valid_token_toast();
     }
 
-    //check whether is the current user
+    // Check whether is the current user
     if (token === localStorage.getItem("currentUser")) {
       return invite_own_toast();
     }
+
     // Check if user exists
     const userRef = doc(firestore, 'users', token);
     const docSnapshot = await getDoc(userRef);
@@ -149,7 +148,7 @@ export default function NoteApp() {
     }
   };
 
-  
+
   useEffect(() => {
     const noteRef = doc(firestore, 'notes', noteID);
     // Set up a real-time listener for the document
@@ -169,7 +168,6 @@ export default function NoteApp() {
         console.log('Document not found');
       }
     });
-
     return () => {
       unsubscribe();
     };
@@ -211,7 +209,7 @@ export default function NoteApp() {
     getPlainText();
     handlePlainText();
   }, []);
-  
+
   // get plain text from the editor
   function getPlainText() {
     var divElement = document.querySelector(".ql-editor"); // Select the first element with the class "ql-editor"
@@ -222,14 +220,14 @@ export default function NoteApp() {
       console.log("Element not found.");
     }
   }
-  
+
   const quillRef = useRef(null);
   const array = [];
 
   const trackID = () => {
     // TODO: track the id every change
   }
-  
+
   const handlePlainText = () => {
     getPlainText();
     console.log({ Plaintext: plaintext, Length: plaintext.length, opID: counter + "@" + localStorage.getItem("currentUser"), character: pressedKey });
@@ -240,11 +238,11 @@ export default function NoteApp() {
       opID: counter + "@" + localStorage.getItem("currentUser"),
       character: pressedKey
     })
-    .then((response) => {
-      console.log(response.data);
-    });
+      .then((response) => {
+        console.log(response.data);
+      });
   }
-  
+
   useEffect(() => {
     const handleKeyPress = (event) => {
       // Handle the key press event here
@@ -252,14 +250,11 @@ export default function NoteApp() {
       setPressedKey(event.key)
       setCounter((counter) => counter + 1);
     };
-
     document.addEventListener('keydown', handleKeyPress);
-
     return () => {
       document.removeEventListener('keydown', handleKeyPress);
     };
   }, []);
-  
 
   // track the cursor position 
   useEffect(() => {
@@ -272,9 +267,6 @@ export default function NoteApp() {
       });
     }
   }, []);
-
-
-
 
   return (
     <div className="main_container">
@@ -292,7 +284,7 @@ export default function NoteApp() {
         modules={module}
         theme="snow"
         value={noteText}
-        onChange={(newNoteText) => { handleTextChange(newNoteText); handlePlainText();  }}
+        onChange={(newNoteText) => { handleTextChange(newNoteText); handlePlainText(); }}
       />
     </div>
   );

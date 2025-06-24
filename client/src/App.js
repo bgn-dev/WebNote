@@ -1,5 +1,9 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom"
 
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+
+
 import './App.css';
 import Login from './components/login'
 import Grid from './components/grid'
@@ -8,9 +12,6 @@ import Popup from './components/popup'
 import ProtectedRoute from "./components/common/protectedRoute";
 import { AuthProvider } from './firebase/auth';
 
-// Packages
-import { ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
 
 function App() {
   return (
