@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { updateDoc, getDoc, doc, onSnapshot, deleteField } from "@firebase/firestore"
-import { firestore } from '../database/config';
+import { firestore } from '../firebase/config';
 import { useNavigate } from "react-router-dom";
 import { debounce } from 'lodash'; // Import the debounce function
 import Axios from 'axios';
@@ -223,6 +223,12 @@ export default function NoteApp() {
     }
   }
   
+  const quillRef = useRef(null);
+  const array = [];
+
+  const trackID = () => {
+    // TODO: track the id every change
+  }
   
   const handlePlainText = () => {
     getPlainText();
@@ -254,9 +260,7 @@ export default function NoteApp() {
     };
   }, []);
   
-  const quillRef = useRef(null);
-  const array = [];
-  
+
   // track the cursor position 
   useEffect(() => {
     if (quillRef.current) {
