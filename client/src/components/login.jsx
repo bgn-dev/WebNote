@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+
 import { useAuth } from '../firebase/auth';
 
 import './login.css';
+
+import { FcGoogle } from "react-icons/fc";
 
 export default function Login() {
     const [email, setEmail] = useState('');
@@ -27,7 +30,7 @@ export default function Login() {
         try {
             setError('');
             setLoading(true);
-            await signup(email, password);
+            const userCredential = await signup(email, password);
             navigate('grid');
         } catch (error) {
             setError('Failed to log in: ' + error.message);
@@ -40,8 +43,9 @@ export default function Login() {
         try {
             setError('');
             setLoading(true);
-            await login(email, password);
+            const userCredential =  await login(email, password);
             navigate('/grid');
+            console.log(userCredential);
         } catch (error) {
             setError('Failed to log in: ' + error.message);
             console.error(error);
@@ -55,7 +59,7 @@ export default function Login() {
         try {
             setError('');
             setLoading(true);
-            await loginWithGoogle();
+            const userCredential = await loginWithGoogle();
             navigate('/grid');
         } catch (error) {
             setError('Failed to log in with Google: ' + error.message);
@@ -99,8 +103,8 @@ export default function Login() {
                 <a className="generate_token" onClick={createNewAccount}>New? Create a new Account!</a>
             </div>
             <button className="verificate_btn" onClick={handleActionButton}>{log_button}</button>
-            <button type="button" onClick={handleGoogleLogin} disabled={loading}>
-                Sign in with Google
+            <button className='googleSignIn_btn' onClick={handleGoogleLogin} disabled={loading}>
+                <FcGoogle/>
             </button>
         </div>
     )

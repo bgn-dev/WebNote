@@ -1,7 +1,10 @@
-import React, { useState } from 'react'
-
-
+import { useState } from 'react'
 import { useNavigate } from "react-router-dom";
+
+import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+
+import { useAuth } from '../firebase/auth';
 
 import { PiSignOutBold } from 'react-icons/pi';
 import { BiSearchAlt2 } from 'react-icons/bi';
@@ -9,22 +12,25 @@ import { BiGroup } from 'react-icons/bi';
 import { BiMenu } from 'react-icons/bi';
 import { MdOutlineToken } from 'react-icons/md';
 
-import { useAuth } from '../firebase/auth';
-
-import { toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
 import './navbar.css'
-
 
 export default function Navbar({ collabToggle, setCollabToggle }) {
     const navigate = useNavigate();
+    const { user, logout } = useAuth();
+
     const [clickedOnce, setClickedOnce] = useState(false);
 
-    const { logout } = useAuth();
-
-    const token_toast = () => toast(localStorage.getItem("currentUser"), {
-        icon: <MdOutlineToken />,
-    });
+    const token_toast = () => {
+        if (!user?.uid) {
+            toast('Something went wrong!', {
+                icon: <MdOutlineToken />,
+            });
+        } else {
+            toast(user.uid, {
+                icon: <MdOutlineToken />,
+            });
+        }
+    };
 
     const group_toast = (text) => toast(text, {
         icon: <BiGroup />,
