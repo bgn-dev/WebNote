@@ -9,8 +9,13 @@ from linked_list import LinkedList
 # Create an instance of the LinkedList for the text
 richtext = LinkedList()
 
-
 app = Flask(__name__, static_url_path='/', static_folder= "../client/build") # assign the frontend to the backend
+
+# ADD THESE LINES HERE for development:
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0  # Disable static file caching
+app.config['TEMPLATES_AUTO_RELOAD'] = True   # Auto-reload templates
+app.config['DEBUG'] = True  # Enable debug mode
+
 CORS(app)
 
 # database configuration
