@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { updateDoc, getDoc, doc, onSnapshot, deleteField } from "@firebase/firestore"
-import { firestore } from '../database/config';
+import { firestore } from '../firebase/config';
 import { useNavigate } from "react-router-dom";
 import { debounce } from 'lodash'; // Import the debounce function
+import Axios from 'axios';
+
 
 import ReactQuill from 'react-quill';
 
@@ -23,6 +25,10 @@ export default function NoteApp() {
 
   const [noteText, setNoteText] = useState("");
   const [inputToken, setInputToken] = useState("");
+
+  let plaintext = "";
+  const [counter, setCounter] = useState(0);
+  const [pressedKey, setPressedKey] = useState(null);
 
   const location = useLocation();
   const noteID = location.state && location.state.noteID;
@@ -143,16 +149,17 @@ export default function NoteApp() {
     }
   };
 
+  
   useEffect(() => {
     const noteRef = doc(firestore, 'notes', noteID);
     // Set up a real-time listener for the document
     const unsubscribe = onSnapshot(noteRef, (docSnapshot) => {
       if (docSnapshot.exists()) {
         const data = docSnapshot.data();
-        console.log("Fetched as ", data.note);
+        //console.log("Fetched as ", data.note);
         // Only update noteText if it's different from fetched data
         if (noteText !== data.note) {
-          console.log("Fetched as ", data.note);
+          //console.log("Fetched as ", data.note);
           setNoteText(data.note);
         }
         // Always update noteTitle
@@ -175,7 +182,7 @@ export default function NoteApp() {
         note: newNoteText,
         title: newNoteTitle,
       });
-      console.log("Document successfully updated!");
+      //console.log("Document successfully updated!");
     } catch (error) {
       console.error("Error updating document: ", error);
     }
@@ -183,7 +190,7 @@ export default function NoteApp() {
 
   const handleTextChange = (newNoteText) => {
     if (noteText !== newNoteText) {
-      console.log("Upload as ", newNoteText);
+      //console.log("Upload as ", newNoteText);
       debouncedHandleUpload(newNoteText, noteTitle);
     }
   };
@@ -194,11 +201,79 @@ export default function NoteApp() {
       await updateDoc(noteRef, {
         title: newNoteTitle,
       });
-      console.log("Document successfully updated!");
+      //console.log("Document successfully updated!");
     } catch (error) {
       console.error("Error updating document: ", error);
     }
   };
+
+  useEffect(() => {
+    getPlainText();
+    handlePlainText();
+  }, []);
+  
+  // get plain text from the editor
+  function getPlainText() {
+    var divElement = document.querySelector(".ql-editor"); // Select the first element with the class "ql-editor"
+    if (divElement) {
+      var plainText = divElement.innerText;
+      plaintext = plainText;
+    } else {
+      console.log("Element not found.");
+    }
+  }
+  
+  const quillRef = useRef(null);
+  const array = [];
+
+  const trackID = () => {
+    // TODO: track the id every change
+  }
+  
+  const handlePlainText = () => {
+    getPlainText();
+    console.log({ Plaintext: plaintext, Length: plaintext.length, opID: counter + "@" + localStorage.getItem("currentUser"), character: pressedKey });
+    Axios.post("http://localhost:5000/sync", {
+      plaintext: plaintext,
+      length: plaintext.length,
+      counter: counter,
+      opID: counter + "@" + localStorage.getItem("currentUser"),
+      character: pressedKey
+    })
+    .then((response) => {
+      console.log(response.data);
+    });
+  }
+  
+  useEffect(() => {
+    const handleKeyPress = (event) => {
+      // Handle the key press event here
+      console.log('Key pressed:', event.key);
+      setPressedKey(event.key)
+      setCounter((counter) => counter + 1);
+    };
+
+    document.addEventListener('keydown', handleKeyPress);
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyPress);
+    };
+  }, []);
+  
+
+  // track the cursor position 
+  useEffect(() => {
+    if (quillRef.current) {
+      quillRef.current.getEditor().on('selection-change', (range) => {
+        if (range) {
+          const cursorPosition = range.index;
+          console.log('Cursor position:', cursorPosition);
+        }
+      });
+    }
+  }, []);
+
+
 
 
   return (
@@ -213,10 +288,11 @@ export default function NoteApp() {
         <button className="back_button" onClick={handleGoBack}> <TfiBackLeft /> </button>
       </div>
       <ReactQuill
+        ref={quillRef}
         modules={module}
         theme="snow"
         value={noteText}
-        onChange={handleTextChange}
+        onChange={(newNoteText) => { handleTextChange(newNoteText); handlePlainText();  }}
       />
     </div>
   );
