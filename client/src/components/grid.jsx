@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { collection, onSnapshot, query, where, deleteDoc, doc, updateDoc, getDocs, getDoc, setDoc, deleteField } from "@firebase/firestore"
-import { firestore } from '../database/config';
+import { firestore } from '../firebase/config';
 import { useNavigate } from "react-router-dom";
 
 import './grid.css'

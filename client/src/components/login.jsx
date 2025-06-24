@@ -3,72 +3,63 @@ import Axios from 'axios';
 import { useState } from 'react';
 import { useNavigate } from "react-router-dom";
 
-import './login.css';
+import { GoogleLogin } from '@react-oauth/google';
+import { auth } from '../firebase/config';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 
-import { MdOutlineToken } from 'react-icons/md';
+import './login.css';
 
 export default function Login() {
     const navigate = useNavigate();
-    const [token, setToken] = useState("");
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
     const [log_button, setLog_Button] = useState("Sign In")
 
-    const handleLogButton = () => {
+    const handleActionButton = (e) => {
         if (log_button === "Sign In") {
-            handleSignIn();
+            SignIn(e);
         } else {
-            handleSignUp();
+            SignUp(e);
         }
     }
-    // initiate the post request via axios for the login
-    const handleSignUp = () => {
-        Axios.post("https://neat-note-4478e343a4f5.herokuapp.com/registrate", {
-            id: token,
-        })
-            .then((response) => {
-                console.log(response.data);
-                localStorage.setItem("currentUser", response.data.id);
-                navigate("/grid");
-            })
-            .catch((error) => {
-                console.error("An error occurred:", error);
-            })
-            ;
+
+    const SignUp = async (e) => {
+        e.preventDefault();
+        try {
+            await createUserWithEmailAndPassword(auth, email, password);
+            alert('User created successfully');
+        } catch (err) {
+            console.error(err);
+        }
     };
 
-    const handleSignIn = () => {
-        Axios.post("https://neat-note-4478e343a4f5.herokuapp.com/authenticate", {
-            id: token,
-        })
-            .then((response) => {
-                console.log(response.data);
-                localStorage.setItem("currentUser", response.data.id);
-                navigate("/grid");
-            })
-            .catch((error) => {
-                console.error("An error occurred:", "Token is not valid");
-                shake_animation();
-            });
+    const SignIn = async (e) => {
+        e.preventDefault();
+        try {
+            await signInWithEmailAndPassword(auth, email, password);
+            navigate("/grid");
+        } catch (error) {
+            shake_animation()
+            //console.error(error);
+        }
+    };
+
+    const createNewAccount = () => {
+        //setEmail(response.data);
+        setLog_Button("Sign Up")
+    };
+
+    function handleEMailChange(e) {
+        setEmail(e.target.value)
     }
 
-    const generateToken = () => {
-        Axios.post("https://neat-note-4478e343a4f5.herokuapp.com/generateToken", {
-            id: token,
-        })
-            .then((response) => {
-                console.log(response.data);
-                setToken(response.data);
-                setLog_Button("Sign Up")
-            });
-    };
-
-    function handleInputChange(e) {
-        setToken(e.target.value)
-        setLog_Button("Sign In")
+    function handlePasswordChange(e) {
+        setPassword(e.target.value)
     }
 
     function shake_animation() {
         // Trigger the blinking effect on the token input field
-        const tokenInput = document.querySelector('.input_verification input[type="token"]');
+        const tokenInput = document.querySelector('.input_verification input');
         tokenInput.classList.add('shake');
         // Remove the shake class after 0.5 seconds
         setTimeout(() => {
@@ -76,18 +67,27 @@ export default function Login() {
         }, 500);
     }
 
+    const responseMessage = (response) => {
+        console.log(response);
+    };
+    const errorMessage = (error) => {
+        console.log(error);
+    };
+
     return (
         <div className="login_container">
             <h1>WebNote</h1>
-            <div className="input_verification">
-                <input type="token" value={token} placeholder="Token" onChange={(e) => handleInputChange(e)} />
-                <i><MdOutlineToken /></i>
+            <div className="input_credentials">
+                <input type="token" value={email} placeholder="E-Mail" onChange={(e) => handleEMailChange(e)} />
+            </div>
+            <div className="input_credentials">
+                <input type="password" value={password} placeholder="Password" onChange={(e) => handlePasswordChange(e)} />
             </div>
             <div className="token_container">
-                <a>Don't have a token yet?</a>
-                <a className="generate_token" onClick={generateToken}>Generate your token.</a>
+                <a className="generate_token" onClick={createNewAccount}>New? Create a new Account!</a>
             </div>
-            <button className="verificate_btn" onClick={handleLogButton}>{log_button}</button>
+            <button className="verificate_btn" onClick={handleActionButton}>{log_button}</button>
+            <GoogleLogin onSuccess={responseMessage} onError={errorMessage} />
         </div>
     )
 }
