@@ -11,6 +11,7 @@ import { BiSearchAlt2 } from 'react-icons/bi';
 import { BiGroup } from 'react-icons/bi';
 import { BiMenu } from 'react-icons/bi';
 import { MdOutlineToken } from 'react-icons/md';
+import Button from './common/button';
 
 import './navbar.css'
 
@@ -75,10 +76,20 @@ export default function Navbar({ collabToggle, setCollabToggle }) {
                     </h1>
                 </div>
                 <input type="token" placeholder="Search" />
-                <button className="search-btn"> <BiSearchAlt2 /> </button>
-                <button className={`toggle-collab-btn ${clickedOnce ? 'button-clicked' : ''}`} onClick={() => { collabsToggle(); grop_toast_string() }}> <BiGroup /> </button>
-                <button className="token-btn" onClick={token_toast}> <MdOutlineToken /> </button>
-                <button className="sign-out-btn" onClick={handleLogout}> <PiSignOutBold /> </button>
+                <Button onClick={() => { }}>
+                    <BiSearchAlt2 />
+                </Button>
+                <Button
+                    active={clickedOnce}
+                    onClick={() => { collabsToggle(); grop_toast_string() }}>
+                    <BiGroup />
+                </Button>
+                <Button onClick={token_toast}>
+                    <MdOutlineToken />
+                </Button>
+                <Button onClick={handleLogout}>
+                    <PiSignOutBold />
+                </Button>
                 <div className="dropdown-menu">
                     <button className="compact-navbar-btn" > <BiMenu /> </button>
                     <ul className="dropdown-content">
