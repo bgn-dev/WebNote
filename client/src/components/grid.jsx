@@ -24,51 +24,49 @@ export default function Grid() {
     const currentUserEmail = user?.email;
     const colRef = collection(firestore, "notes");
 
-    const fetchUserDocuments = async () => {
-        try {
-            const querySnapshot = await getDocs(colRef);
-            const personalNotes = [];
-            const collaborativeNotes = [];
-
-            querySnapshot.forEach((doc) => {
-                const data = doc.data();
-
-                // Check if current user is involved in this document
-                const isOwner = data.owner === currentUserEmail;
-                const isCollaborator = data.collaborators && data.collaborators.includes(currentUserEmail);
-
-                if (isOwner || isCollaborator) {
-                    const docData = { id: doc.id, ...data };
-
-                    // Determine if it's personal or collaborative based on collaborator count
-                    if (data.collaborators && data.collaborators.length > 1) {
-                        // Multiple collaborators = collaborative document
-                        collaborativeNotes.push(docData);
-                    } else {
-                        // Single collaborator (should be the owner) = personal document
-                        personalNotes.push(docData);
-                    }
-                }
-            });
-
-            setNotes(personalNotes);
-            setCollabedDocs(collaborativeNotes);
-        } catch (error) {
-            console.error("Error getting documents:", error);
-        }
-    };
-
     useEffect(() => {
         if (!currentUserEmail) return;
 
-        // Set up real-time listener for all notes
+        const fetchUserDocuments = async () => {
+            try {
+                const querySnapshot = await getDocs(colRef);
+                const personalNotes = [];
+                const collaborativeNotes = [];
+
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+
+                    // Check if current user is involved in this document
+                    const isOwner = data.owner === currentUserEmail;
+                    const isCollaborator = data.collaborators && data.collaborators.includes(currentUserEmail);
+
+                    if (isOwner || isCollaborator) {
+                        const docData = { id: doc.id, ...data };
+
+                        // Determine if it's personal or collaborative based on collaborator count
+                        if (data.collaborators && data.collaborators.length > 1) {
+                            // Multiple collaborators = collaborative document
+                            collaborativeNotes.push(docData);
+                        } else {
+                            // Single collaborator (should be the owner) = personal document
+                            personalNotes.push(docData);
+                        }
+                    }
+                });
+
+                setNotes(personalNotes);
+                setCollabedDocs(collaborativeNotes);
+            } catch (error) {
+                console.error("Error getting documents:", error);
+            }
+        };
+
         const unsubscribe = onSnapshot(colRef, (snapshot) => {
-            // Re-fetch and categorize documents when any change occurs
             fetchUserDocuments();
         });
 
         return () => unsubscribe();
-    }, [currentUserEmail]);
+    }, [currentUserEmail, colRef]);
 
     const handleDelete = async (ID) => {
         if (collabToggle === true) {
