@@ -6,7 +6,7 @@ import 'react-toastify/dist/ReactToastify.css';
 
 import './App.css';
 import Login from './components/login'
-import Grid from './components/grid'
+import Grid from "./components/grid";
 import Note from './components/note'
 import Popup from './components/popup'
 import ProtectedRoute from "./components/common/protectedRoute";

@@ -1,0 +1,123 @@
+/* Custom Quill Editor Styles */
+
+/* Container for the Quill editor */
+.quill-container {
+  position: relative;
+  overflow: visible !important; /* Allow dropdowns to overflow */
+  border-radius: 16px;
+}
+
+/* Ensure proper border radius for the first child (toolbar) */
+.quill-container .ql-toolbar {
+  border-top-left-radius: 16px;
+  border-top-right-radius: 16px;
+}
+
+/* Ensure proper border radius for the last child (editor) */
+.quill-container .ql-container {
+  border-bottom-left-radius: 16px;
+  border-bottom-right-radius: 16px;
+}
+
+.ql-toolbar {
+  border: none !important;
+  border-bottom: 1px solid rgb(226 232 240 / 0.5) !important;
+  background: rgb(248 250 252 / 0.5) !important;
+  backdrop-filter: blur(8px) !important;
+  padding: 12px 20px !important;
+  position: relative;
+  z-index: 10; /* Ensure toolbar is above other elements */
+}
+
+/* Fix for dropdown menus */
+.ql-toolbar .ql-picker-options {
+  z-index: 999 !important; /* High z-index for dropdowns */
+  position: absolute !important;
+  background: white !important;
+  border: 1px solid rgb(226 232 240) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  margin-top: -1px !important;
+}
+
+.ql-toolbar .ql-picker.ql-expanded .ql-picker-options {
+  display: block !important;
+  z-index: 999 !important;
+}
+
+.ql-toolbar .ql-stroke {
+  stroke: rgb(100 116 139) !important;
+}
+
+.ql-toolbar .ql-fill {
+  fill: rgb(100 116 139) !important;
+}
+
+.ql-toolbar button:hover .ql-stroke {
+  stroke: rgb(51 65 85) !important;
+}
+
+.ql-toolbar button:hover .ql-fill {
+  fill: rgb(51 65 85) !important;
+}
+
+.ql-toolbar button.ql-active .ql-stroke {
+  stroke: rgb(59 130 246) !important;
+}
+
+.ql-toolbar button.ql-active .ql-fill {
+  fill: rgb(59 130 246) !important;
+}
+
+.ql-container {
+  border: none !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
+  position: relative;
+  overflow: visible !important; /* Allow content to overflow if needed */
+}
+
+.ql-editor {
+  padding: 32px !important;
+  font-size: 16px !important;
+  line-height: 1.7 !important;
+  color: rgb(51 65 85) !important;
+  min-height: 500px !important;
+  overflow-y: auto !important;
+}
+
+.ql-editor.ql-blank::before {
+  color: rgb(148 163 184) !important;
+  font-style: normal !important;
+  font-weight: 300 !important;
+}
+
+.ql-editor h1, 
+.ql-editor h2, 
+.ql-editor h3 {
+  color: rgb(30 41 59) !important;
+  font-weight: 600 !important;
+  margin: 1.5em 0 0.5em 0 !important;
+}
+
+.ql-editor blockquote {
+  border-left: 4px solid rgb(226 232 240) !important;
+  background: rgb(248 250 252 / 0.5) !important;
+  margin: 1em 0 !important;
+  padding: 1em 1.5em !important;
+  border-radius: 0 8px 8px 0 !important;
+}
+
+.ql-editor code {
+  background: rgb(248 250 252) !important;
+  border: 1px solid rgb(226 232 240) !important;
+  border-radius: 4px !important;
+  padding: 2px 6px !important;
+}
+
+.ql-editor pre {
+  background: rgb(248 250 252) !important;
+  border: 1px solid rgb(226 232 240) !important;
+  border-radius: 8px !important;
+  padding: 1em !important;
+  margin: 1em 0 !important;
+}
