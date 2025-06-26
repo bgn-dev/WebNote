@@ -17,7 +17,7 @@ export default function Collab() {
 
         querySnapshot.forEach((doc) => {
           const data = doc.data();
-
+          
           // Check if currentUser is listed in any field value
           Object.values(data).forEach((fieldValue) => {
             if (fieldValue === currentUser) {
