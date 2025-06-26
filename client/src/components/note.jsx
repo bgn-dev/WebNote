@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 
 import { firestore } from '../firebase/config';
-import { updateDoc, getDoc, doc, onSnapshot, deleteField, arrayUnion } from "@firebase/firestore"
+import { updateDoc, getDoc, doc, onSnapshot, arrayUnion } from "@firebase/firestore"
 
 import { debounce } from 'lodash';
 import Axios from 'axios';
@@ -17,7 +17,7 @@ import { TfiBackLeft } from 'react-icons/tfi';
 import { MdOutlineClose } from 'react-icons/md';
 
 import 'react-quill/dist/quill.snow.css';
-import './quill-custom.css'; // Import your custom styles
+import './quill-custom.css';
 
 export default function NoteApp() {
   const navigate = useNavigate();
