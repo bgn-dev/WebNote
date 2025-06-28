@@ -1,8 +1,6 @@
 .App-Header {
-  background-image: linear-gradient(to right, #d3cce3, #e9e4f0);
   min-height: 100vh;
-  font-size: calc(10px + 2vmin);
-  width: 100%;
+  /*font-size: calc(6px + 2vmin);*/
 }
 
 * {
@@ -11,23 +9,4 @@
   /* or `border-box` */
   -webkit-box-sizing: border-box;
   box-sizing: border-box;
-}
-
-button {
-  flex-shrink: 0;
-  /* Prevent the button from shrinking */
-  background-color: #fff;
-  border-radius: 0.25rem;
-  border: none;
-  box-shadow: 0 20px 40px -14px rgba(0, 0, 0, 0.25);
-  color: black;
-  font-size: 15px;
-  padding: 10px 25px;
-  cursor: pointer;
-  transition: 0.3s;
-}
-
-button:hover {
-  background-color: #95a3ab;
-  color: wheat;
 }
