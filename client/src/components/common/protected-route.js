@@ -1,7 +1,6 @@
 import { useAuth } from "../../firebase/auth";
 import { Navigate } from 'react-router-dom';
 
-// Simple Loading Component (recommended for ProtectedRoute)
 const AuthLoading = () => {
     return (
         <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 to-slate-100/50">

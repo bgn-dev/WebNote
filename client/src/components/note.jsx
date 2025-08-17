@@ -151,7 +151,6 @@ export default function NoteApp() {
 
   useEffect(() => {
     getPlainText();
-    handlePlainText();
   }, []);
 
   function getPlainText() {
@@ -166,20 +165,7 @@ export default function NoteApp() {
 
   const quillRef = useRef(null);
 
-  const handlePlainText = () => {
-    getPlainText();
-    console.log({ Plaintext: plaintext, Length: plaintext.length, opID: counter + "@" + localStorage.getItem("currentUser"), character: pressedKey });
-    Axios.post("http://localhost:5000/sync", {
-      plaintext: plaintext,
-      length: plaintext.length,
-      counter: counter,
-      opID: counter + "@" + localStorage.getItem("currentUser"),
-      character: pressedKey
-    })
-      .then((response) => {
-        console.log(response.data);
-      });
-  }
+
 
   useEffect(() => {
     const handleKeyPress = (event) => {
@@ -314,7 +300,6 @@ export default function NoteApp() {
             value={noteText}
             onChange={(newNoteText) => {
               handleTextChange(newNoteText);
-              handlePlainText();
             }}
             placeholder="Start writing your note..."
           />
