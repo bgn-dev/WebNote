@@ -4,14 +4,16 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 
-import './App.css';
+import './app.css';
 import Login from './components/login'
 import Grid from "./components/grid";
 import Note from './components/note'
 import Popup from './components/popup'
-import ProtectedRoute from "./components/common/protectedRoute";
+import ProtectedRoute from "./components/common/protected-route";
 import { AuthProvider } from './firebase/auth';
 
+import HomeScreen from "./screens/home-screen";
+import CallScreen from "./screens/call-screen";
 
 function App() {
   return (
@@ -33,6 +35,12 @@ function App() {
               theme="light"
             />
             <Routes>
+
+              {/* Test purpose of webrtc*/}
+              <Route path="/webrtc" element={<HomeScreen />} />
+              <Route path="/call/:username/:room" element={<CallScreen />} />
+              {/* Test purpose of webrtc*/}
+
               <Route path="/" element={<Login />} />
               <Route path="/popup" element={<Popup />} />
               <Route path="/grid" element={

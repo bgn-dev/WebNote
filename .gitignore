@@ -10,6 +10,9 @@ node_modules/
 .firebase/
 .firebaserc
 
+# CRITICAL: Firebase service account keys
+server/key.json
+key.json
 
 # misc
 .DS_Store
@@ -18,8 +21,6 @@ node_modules/
 client/build
 client/dist/
 server/venv/
-#server/key.json
-
 
 *.log
 npm-debug.log*
