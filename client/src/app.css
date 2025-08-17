@@ -1,0 +1,12 @@
+.App-Header {
+  min-height: 100vh;
+  /*font-size: calc(6px + 2vmin);*/
+}
+
+* {
+  /* the following ensures they're all using the same box-model for rendering */
+  -moz-box-sizing: border-box;
+  /* or `border-box` */
+  -webkit-box-sizing: border-box;
+  box-sizing: border-box;
+}
