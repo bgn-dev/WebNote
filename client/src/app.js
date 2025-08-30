@@ -12,6 +12,8 @@ import Popup from './components/popup'
 import ProtectedRoute from "./components/common/protected-route";
 import { AuthProvider } from './firebase/auth';
 
+import HomeScreen from "./screens/home-screen";
+import CallScreen from "./screens/call-screen";
 
 function App() {
   return (
@@ -33,6 +35,10 @@ function App() {
               theme="light"
             />
             <Routes>
+              {/* WebRTC routes */}
+              <Route path="/webrtc" element={<HomeScreen />} />
+              <Route path="/call/:username/:room" element={<CallScreen />} />
+
               <Route path="/" element={<Login />} />
               <Route path="/popup" element={<Popup />} />
               <Route path="/grid" element={
