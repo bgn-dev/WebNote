@@ -66,7 +66,7 @@ function CallScreen() {
                 console.log('Page visible again');
                 // When page becomes visible, check connection health
                 if (webrtcManager.current) {
-                    console.log(`Checking connections: ${webrtcManager.current.peerConnections.size} active`);
+                    console.log(`Checking connections: ${webrtcManager.current.peers.size} active`);
                 }
             }
         };
@@ -135,6 +135,12 @@ function CallScreen() {
         socketRef.current.on("connect_error", (error) => {
             console.error("Connection error:", error);
             setConnectionStatus("error");
+        });
+
+        socketRef.current.on("disconnect", (reason) => {
+            console.log("Socket disconnected:", reason);
+            setConnectionStatus("disconnected");
+            // Don't cleanup WebRTC connections on disconnect - they can survive reconnection
         });
 
         return () => {

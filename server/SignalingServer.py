@@ -66,19 +66,20 @@ def handle_join(message):
 def handle_data(message):
     username = message.get("username")
     room = message.get("room")
+    target_peer_id = message.get("targetPeerId")
     data = message.get("data")
     
-    if not all([username, room, data]):
-        emit("error", {"message": "Invalid data format!"})
+    if not all([username, room, target_peer_id, data]):
+        emit("error", {"message": "Invalid data format! username, room, targetPeerId, and data are required."})
         return
 
-    print(f"Data from {username} in {room}: {data}")
+    print(f"Data from {username} to {target_peer_id} in {room}: {data}")
     emit("data", {
         "username": username,
         "room": room,
-        "senderId": request.sid,  # Add sender's socket ID
-        "data": data  # <-- the inner signaling data
-    }, to=room, skip_sid=request.sid)
+        "senderId": request.sid,
+        "data": data
+    }, to=target_peer_id)
 
 @socketio.on("disconnect")
 def handle_disconnect():
