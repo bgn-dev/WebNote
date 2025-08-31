@@ -46,20 +46,48 @@ function CallScreen() {
             transports: ['polling']
         });
 
+        // Handle page refresh/close - cleanup WebRTC connections
+        const handleBeforeUnload = (event) => {
+            console.log('Page unloading, cleaning up WebRTC connections');
+            if (webrtcManager.current) {
+                webrtcManager.current.cleanup();
+            }
+            if (socketRef.current) {
+                socketRef.current.disconnect();
+            }
+        };
+
+        // Handle visibility change (tab switching, minimizing)
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'hidden') {
+                console.log('Page hidden, keeping connections alive');
+                // Don't cleanup connections on hide - just log
+            } else {
+                console.log('Page visible again');
+                // When page becomes visible, check connection health
+                if (webrtcManager.current) {
+                    console.log(`Checking connections: ${webrtcManager.current.peerConnections.size} active`);
+                }
+            }
+        };
+
+        // Add event listeners for cleanup
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        window.addEventListener('unload', handleBeforeUnload);
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
         socketRef.current.on("connect", () => {
+            console.log("Socket connected");
             setConnectionStatus("connected");
             
-            // Initialize WebRTC manager after socket connection
-            webrtcManager.current = new WebRTCManager(
+            webrtcManager.current = WebRTCManager.createInstance(
                 socketRef.current,
                 handleMessage,
                 handlePeerConnected,
                 handlePeerDisconnected
             );
             
-            joinTimeoutRef.current = setTimeout(() => {
-                joinRoom();
-            }, 100);
+            joinRoom();
         });
 
         socketRef.current.on("ready", (data) => {
@@ -67,11 +95,14 @@ function CallScreen() {
             setConnectedPeers(data.peers);
             setMessages(prev => [...prev, `Joined room. Found ${data.peers.length} existing peers.`]);
             
-            // Set user info in WebRTC manager and connect to existing peers
             if (webrtcManager.current) {
                 webrtcManager.current.setUserInfo(localUsername, roomName);
-                data.peers.forEach(peer => {
-                    webrtcManager.current.addPeer(peer.sid, peer.username);
+                
+                // Connect to existing peers immediately - deterministic logic prevents conflicts
+                data.peers.forEach((peer) => {
+                    if (webrtcManager.current && !webrtcManager.current.hasPeer(peer.sid)) {
+                        webrtcManager.current.addPeer(peer.sid, peer.username);
+                    }
                 });
             }
         });
@@ -81,7 +112,6 @@ function CallScreen() {
             setConnectedPeers(prev => [...prev, { sid: data.sid, username: data.username }]);
             setMessages(prev => [...prev, `${data.username} joined the room`]);
             
-            // Connect to new peer via WebRTC
             if (webrtcManager.current) {
                 webrtcManager.current.addPeer(data.sid, data.username);
             }
@@ -92,7 +122,6 @@ function CallScreen() {
             setConnectedPeers(prev => prev.filter(peer => peer.sid !== data.sid));
             setMessages(prev => [...prev, `${data.username} left the room`]);
             
-            // Remove peer from WebRTC
             if (webrtcManager.current) {
                 webrtcManager.current.removePeer(data.sid);
             }
@@ -109,12 +138,28 @@ function CallScreen() {
         });
 
         return () => {
+            console.log('CallScreen component unmounting, cleaning up');
+            
+            // Clear timeout
             if (joinTimeoutRef.current) {
                 clearTimeout(joinTimeoutRef.current);
             }
+            
+            // Cleanup WebRTC manager
+            if (webrtcManager.current) {
+                webrtcManager.current.cleanup();
+                webrtcManager.current = null;
+            }
+            
+            // Disconnect socket
             if (socketRef.current) {
                 socketRef.current.disconnect();
             }
+            
+            // Remove event listeners
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+            window.removeEventListener('unload', handleBeforeUnload);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
         };
     }, [joinRoom, handleMessage, handlePeerConnected, handlePeerDisconnected]);
 
