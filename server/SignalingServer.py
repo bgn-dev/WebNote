@@ -27,6 +27,18 @@ def handle_join(message):
     if room not in active_connections:
         active_connections[room] = {}
 
+    # Check if this username is already in the room with a different sid (refresh case)
+    existing_sids_to_remove = []
+    for existing_sid, user_data in active_connections[room].items():
+        if user_data["username"] == username and existing_sid != sid:
+            print(f"Found existing connection for {username}: {existing_sid}, removing it")
+            existing_sids_to_remove.append(existing_sid)
+    
+    # Remove old connections for the same user
+    for old_sid in existing_sids_to_remove:
+        del active_connections[room][old_sid]
+        emit("peer_left", {"sid": old_sid, "username": username}, to=room)
+
     join_room(room)
     active_connections[room][sid] = {"username": username}
 
