@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 
-import { toast } from 'react-toastify';
+import { showToast } from './common/toast';
+import { isValidEmail } from '../utils/validation';
 
 import { firestore } from '../firebase/config';
 import { updateDoc, getDoc, doc, onSnapshot, arrayUnion } from "@firebase/firestore"
@@ -21,6 +22,8 @@ import './quill-custom.css';
 
 export default function NoteApp() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { noteID } = useParams();
 
   const [noteText, setNoteText] = useState("");
   const [inputToken, setInputToken] = useState("");
@@ -30,27 +33,8 @@ export default function NoteApp() {
   const [counter, setCounter] = useState(0);
   const [pressedKey, setPressedKey] = useState(null);
 
-  const location = useLocation();
-  const noteID = location.state && location.state.noteID;
   const [noteTitle, setNoteTitle] = useState(location.state && location.state.noteTitle);
 
-  const invite_succes_toast = () => toast.success("User invited.", {
-    autoClose: 500,
-    newestOnTop: true,
-    closeOnClick: true,
-    pauseOnHover: false,
-    draggable: false,
-    progress: undefined,
-  });
-
-  const invite_valid_email_toast = () => toast.info("Enter a valid e-mail.", {
-    autoClose: 500,
-    newestOnTop: true,
-    closeOnClick: true,
-    pauseOnHover: false,
-    draggable: false,
-    progress: undefined,
-  });
 
   var toolbarOptions = [
     ['bold', 'italic', 'underline', 'strike'],
@@ -76,8 +60,8 @@ export default function NoteApp() {
   }
 
   const handleInvite = async (email) => {
-    if (email === "") {
-      return invite_valid_email_toast();
+    if (!email || !isValidEmail(email)) {
+      return showToast.error("Please enter a valid email address");
     }
     console.log(email);
 
@@ -93,7 +77,7 @@ export default function NoteApp() {
 
         console.log('Updated document:', documentData);
         setInputToken("");
-        invite_succes_toast();
+        showToast.success("User invited successfully");
       } else {
         console.log('Document does not exist');
       }

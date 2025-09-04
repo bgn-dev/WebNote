@@ -41,13 +41,13 @@ function App() {
 
               <Route path="/" element={<Login />} />
               <Route path="/popup" element={<Popup />} />
-              <Route path="/grid" element={
+              <Route path="/notes" element={
                 <ProtectedRoute>
                   <Grid />
                 </ProtectedRoute>
               }
               />
-              <Route path="/note" element={
+              <Route path="/note/:noteID" element={
                 <ProtectedRoute>
                   <Note />
                 </ProtectedRoute>
