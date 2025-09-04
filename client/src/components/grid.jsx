@@ -107,7 +107,11 @@ export default function Grid() {
     };
 
     const handleNote = (ID, title) => {
-        navigate("/note", { state: { noteID: ID, noteTitle: title } });
+        navigate(`/note/${ID}`, { 
+            state: { 
+                noteTitle: title 
+            } 
+        });
     }
 
     function handleNewNote() {
