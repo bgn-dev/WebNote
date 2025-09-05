@@ -100,6 +100,68 @@ export default function NoteApp() {
     return i;
   };
 
+  // Generate formatting operations from Quill delta
+  const generateFormattingOperations = (delta, rgaDocument) => {
+    const operations = [];
+    let currentIndex = 0;
+    
+    for (const op of delta.ops) {
+      if (op.retain && op.attributes) {
+        // This is a formatting operation - apply attributes to the retained range
+        const length = op.retain;
+        const startOpId = rgaDocument.getOpIdAtIndex(currentIndex);
+        const endOpId = rgaDocument.getOpIdAtIndex(currentIndex + length - 1);
+        
+        if (startOpId && endOpId) {
+          // Generate mark operations for each attribute
+          for (const [attrName, attrValue] of Object.entries(op.attributes)) {
+            if (attrValue) {
+              // Add mark
+              const markId = rgaDocument.generateMarkId();
+              const markOp = rgaDocument.createOperation('addMark', {
+                markId,
+                startOpId,
+                endOpId,
+                markType: attrName,
+                attributes: { [attrName]: attrValue }
+              });
+              operations.push(markOp);
+            } else {
+              // Remove mark (find existing marks and remove them)
+              const sequence = rgaDocument.getOrderedSequence();
+              const startIndex = sequence.findIndex(node => node.opId === startOpId);
+              const endIndex = sequence.findIndex(node => node.opId === endOpId);
+              
+              // Find marks to remove
+              for (const mark of rgaDocument.marks.values()) {
+                if (mark.deleted || mark.markType !== attrName) continue;
+                
+                const markStartIndex = sequence.findIndex(node => node.opId === mark.startOpId);
+                const markEndIndex = sequence.findIndex(node => node.opId === mark.endOpId);
+                
+                // Check if this mark overlaps with the range we're unformatting
+                if (markStartIndex <= endIndex && markEndIndex >= startIndex) {
+                  const removeOp = rgaDocument.createOperation('removeMark', {
+                    markId: mark.markId
+                  });
+                  operations.push(removeOp);
+                }
+              }
+            }
+          }
+        }
+        currentIndex += length;
+      } else if (op.retain) {
+        currentIndex += op.retain;
+      } else if (op.insert) {
+        currentIndex += typeof op.insert === 'string' ? op.insert.length : 1;
+      }
+    }
+    
+    console.log('Generated', operations.length, 'formatting operations');
+    return operations;
+  };
+
   // Generate RGA operations WITHOUT applying them locally
   const generateOperationsFromTextDiff = (oldText, newText, rgaDocument) => {
     const operations = [];
@@ -112,7 +174,7 @@ export default function NoteApp() {
         let leftOpId = change.index > 0 ? rgaDocument.getOpIdAtIndex(change.index - 1) : null;
         
         for (const char of change.text) {
-          // CRITICAL FIX: Generate opId WITHOUT applying the operation locally
+          // Generate opId WITHOUT applying the operation locally
           const opId = rgaDocument.generateOpId();
           operations.push(rgaDocument.createOperation('insert', {
             opId,
@@ -125,7 +187,7 @@ export default function NoteApp() {
         for (let i = 0; i < change.count; i++) {
           const opId = rgaDocument.getOpIdAtIndex(change.index);
           if (opId) {
-            // CRITICAL FIX: Generate delete operation WITHOUT applying locally
+            // Generate delete operation WITHOUT applying locally
             operations.push(rgaDocument.createOperation('delete', {
               targetId: opId
             }));
@@ -206,50 +268,43 @@ export default function NoteApp() {
       if (data.type === 'crdt_operation') {
         console.log('Applying CRDT operation:', data.operation, 'from user:', data.operation.userId);
         
-        // CRITICAL: Set flag BEFORE any processing
+        // Set flag BEFORE any processing
         isApplyingRemoteChange.current = true;
         
         // Apply operation with deduplication
         const wasApplied = rgaDoc.applyOperation(data.operation);
         
         if (wasApplied !== false) { // Only update UI if operation was actually applied
-          // Get updated text from CRDT
-          const newText = rgaDoc.getText();
-          console.log('Updated text after remote op:', `"${newText}"`);
+          console.log('Remote operation applied successfully, updating UI');
           
-          // CRITICAL: Update Quill directly without React state
+          // Update Quill with formatted content from CRDT
           if (quillRef.current) {
             const editor = quillRef.current.getEditor();
-            const currentQuillText = editor.getText().replace(/\n$/, '');
+            const range = editor.getSelection();
             
-            if (currentQuillText !== newText) {
-              console.log('Updating Quill editor with remote changes');
-              
-              // Use silent update to prevent onChange
-              const range = editor.getSelection();
-              editor.setText(newText, 'silent');
-              
-              // Restore cursor position if possible
-              if (range) {
-                const newLength = newText.length;
-                const safeIndex = Math.min(range.index, newLength);
-                editor.setSelection(safeIndex, 0, 'silent');
-              }
+            // Get formatted content with marks applied
+            const formattedContent = rgaDoc.getFormattedContent();
+            const newText = rgaDoc.getText();
+            
+            console.log('Updating Quill with formatted content:', formattedContent);
+            
+            // Apply both text and formatting using Quill delta
+            editor.setContents(formattedContent, 'silent');
+            
+            // Restore cursor position if possible
+            if (range) {
+              const newLength = newText.length;
+              const safeIndex = Math.min(range.index, newLength);
+              editor.setSelection(safeIndex, 0, 'silent');
             }
+            
+            // Update our text tracking
+            lastAppliedText.current = newText;
           }
-          
-          // Update our text tracking
-          lastAppliedText.current = newText;
         }
         
-        // CRITICAL: Clear flag synchronously after ALL updates
+        // Clear flag synchronously after ALL updates
         isApplyingRemoteChange.current = false;
-      } 
-      else if (data.type === 'format_operation' && data.operation.userId !== user?.email) {
-        console.log('Applying remote format operation:', data.operation);
-        
-        // Apply remote formatting operation to Quill
-        applyRemoteFormatting(data.operation);
       }
     } catch (e) {
       // Ignore non-JSON messages
@@ -257,27 +312,6 @@ export default function NoteApp() {
   }, [rgaDoc, user?.email]);
 
   // Apply remote formatting operation to Quill editor
-  const applyRemoteFormatting = (formatOp) => {
-    if (!quillRef.current) return;
-    
-    const editor = quillRef.current.getEditor();
-    
-    // Convert opId anchors back to text indices
-    const startIndex = rgaDoc.getIndexOfOpId(formatOp.start.opId);
-    const endIndex = rgaDoc.getIndexOfOpId(formatOp.end.opId);
-    
-    if (startIndex !== -1 && endIndex !== -1) {
-      const actualStartIndex = formatOp.start.type === 'before' ? startIndex : startIndex + 1;
-      const actualEndIndex = formatOp.end.type === 'after' ? endIndex + 1 : endIndex;
-      const length = actualEndIndex - actualStartIndex;
-      
-      console.log(`Applying remote format ${formatOp.markType} to range [${actualStartIndex}-${actualEndIndex}]`);
-      
-      // Apply formatting without triggering onChange
-      editor.formatText(actualStartIndex, length, formatOp.markType, true, 'api');
-    }
-  };
-
   const handlePeerConnected = useCallback((peerId, username) => {
     setWebrtcPeers(prev => [...prev, { sid: peerId, username, connected: true }]);
   }, []);
@@ -508,112 +542,68 @@ export default function NoteApp() {
 
   // Handle text content changes (ReactQuill onChange) - React optimized version
   const handleTextChange = useCallback((htmlContent, delta, source, editor) => {
-    // CRITICAL: Skip if applying remote changes or no RGA document
+    // Skip if applying remote changes or no RGA document
     if (!rgaDoc || isApplyingRemoteChange.current) {
       return;
     }
     
-    // CRITICAL: Only process user changes, ignore API/programmatic changes
+    // Only process user changes, ignore API/programmatic changes
     if (source !== 'user') {
       return;
     }
     
+    console.log('handleTextChange called with delta:', delta);
+    
     // Get current text from editor
     const currentText = editor.getText().replace(/\n$/, ''); // Remove trailing newline
     
-    // CRITICAL: Prevent processing if text hasn't actually changed
-    if (currentText === lastAppliedText.current) {
-      return;
-    }
-    
-    // CRITICAL: Prevent double processing during rapid changes
-    if (isApplyingRemoteChange.current) {
-      return;
-    }
-    
-    console.log('Processing LOCAL text change from:', `"${lastAppliedText.current}"`, 'to:', `"${currentText}"`);
-    
-    // Generate operations based on text difference
-    const operations = generateOperationsFromTextDiff(lastAppliedText.current, currentText, rgaDoc);
-    
-    if (operations.length === 0) {
-      return;
-    }
-    
-    console.log('Generated', operations.length, 'operations for local change');
-    
-    // Update our tracking of last applied text IMMEDIATELY
-    lastAppliedText.current = currentText;
-    
-    // Process operations
-    operations.forEach(op => {
-      // Apply locally first (this will be deduplicated if we receive it back)
-      rgaDoc.applyOperation(op);
+    // Process text changes
+    if (currentText !== lastAppliedText.current) {
+      console.log('Processing LOCAL text change from:', `"${lastAppliedText.current}"`, 'to:', `"${currentText}"`);
       
-      // Broadcast to peers
-      if (webrtcManager.current) {
-        webrtcManager.current.broadcastMessage(JSON.stringify({
-          type: 'crdt_operation',
-          operation: op
-        }));
-      }
-    });
+      // Generate text operations
+      const textOperations = generateOperationsFromTextDiff(lastAppliedText.current, currentText, rgaDoc);
+      
+      // Update tracking
+      lastAppliedText.current = currentText;
+      
+      // Process text operations
+      textOperations.forEach(op => {
+        rgaDoc.applyOperation(op);
+        
+        // Broadcast to peers
+        if (webrtcManager.current) {
+          webrtcManager.current.broadcastMessage(JSON.stringify({
+            type: 'crdt_operation',
+            operation: op
+          }));
+        }
+      });
+    }
+    
+    // Process formatting changes from delta
+    if (delta && delta.ops) {
+      const formatOperations = generateFormattingOperations(delta, rgaDoc);
+      
+      formatOperations.forEach(op => {
+        rgaDoc.applyOperation(op);
+        
+        // Broadcast formatting operations
+        if (webrtcManager.current) {
+          webrtcManager.current.broadcastMessage(JSON.stringify({
+            type: 'crdt_operation',
+            operation: op
+          }));
+        }
+      });
+    }
     
   }, [rgaDoc, user?.email]);
 
-  // Handle formatting changes (ReactQuill onChangeSelection with delta)
+  // Selection change handler - no longer needed for formatting (handled in onChange)
   const handleSelectionChange = (range, source, editor) => {
-    if (!rgaDoc || source !== 'user' || !editor) return;
-    
-    // We'll capture deltas in a different way - through a ref
+    // Just track selection for cursor position, formatting is handled in onChange
     console.log('Selection changed:', range, source);
-  };
-
-  // Extract formatting operations from Quill delta
-  const extractFormatOperations = (delta, editor) => {
-    const operations = [];
-    let index = 0;
-    
-    for (const op of delta.ops) {
-      if (op.retain && op.attributes) {
-        // Format operation detected
-        const startIndex = index;
-        const endIndex = index + op.retain;
-        
-        // Get text at this range to verify it exists in RGA
-        const rangeText = editor.getText(startIndex, op.retain);
-        console.log(`Formatting range [${startIndex}-${endIndex}]:`, rangeText, 'with attributes:', op.attributes);
-        
-        // Convert each attribute to a format operation
-        Object.entries(op.attributes).forEach(([markType, value]) => {
-          if (value === true || value) { // Only if attribute is being applied
-            const startOpId = rgaDoc.getOpIdAtIndex(startIndex);
-            const endOpId = rgaDoc.getOpIdAtIndex(endIndex - 1);
-            
-            if (startOpId && endOpId) {
-              operations.push({
-                action: 'addMark',
-                opId: `${Date.now()}_${Math.random()}@${user?.email}`,
-                markType,
-                start: { type: 'before', opId: startOpId },
-                end: { type: 'after', opId: endOpId },
-                timestamp: Date.now(),
-                userId: user?.email
-              });
-            }
-          }
-        });
-      }
-      
-      // Update index based on operation type
-      if (op.retain) {
-        index += op.retain;
-      } else if (op.insert) {
-        index += typeof op.insert === 'string' ? op.insert.length : 1;
-      }
-    }
-    
-    return operations;
   };
 
   const handleTitleChange = async (newNoteTitle) => {
