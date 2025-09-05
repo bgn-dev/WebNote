@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 
 import { showToast } from './common/toast';
@@ -7,8 +7,7 @@ import { isValidEmail } from '../utils/validation';
 import { firestore } from '../firebase/config';
 import { updateDoc, getDoc, doc, onSnapshot, arrayUnion } from "@firebase/firestore"
 
-import { debounce } from 'lodash';
-import Axios from 'axios';
+import socketio from "socket.io-client";
 
 import ReactQuill from 'react-quill';
 
@@ -20,21 +19,185 @@ import { MdOutlineClose } from 'react-icons/md';
 import 'react-quill/dist/quill.snow.css';
 import './quill-custom.css';
 
+import WebRTCManager from './webrtc/webrtc-manager';
+import { useAuth } from '../firebase/auth';
+
+
 export default function NoteApp() {
   const navigate = useNavigate();
   const location = useLocation();
+
   const { noteID } = useParams();
+  const { user } = useAuth();
 
   const [noteText, setNoteText] = useState("");
   const [inputToken, setInputToken] = useState("");
   const [showInvitePopup, setShowInvitePopup] = useState(false);
 
-  let plaintext = "";
-  const [counter, setCounter] = useState(0);
-  const [pressedKey, setPressedKey] = useState(null);
-
   const [noteTitle, setNoteTitle] = useState(location.state && location.state.noteTitle);
 
+  const localUsername = user?.email || 'none';
+  const roomName = noteID;
+
+  const [connectedPeers, setConnectedPeers] = useState([]);
+  const [webrtcPeers, setWebrtcPeers] = useState([]);
+  const [connectionStatus, setConnectionStatus] = useState("connecting");
+
+  const socketRef = useRef(null);
+  const webrtcManager = useRef(null);
+  const joinTimeoutRef = useRef(null);
+
+  // Memoized callbacks to prevent recreating WebRTC manager
+  const handleMessage = useCallback((username, message) => {
+    try {
+      const parsedMessage = JSON.parse(message);
+      if (parsedMessage.type === 'text_change' && parsedMessage.author !== user?.email) {
+        console.log(parsedMessage.content);
+        setNoteText(parsedMessage.content);
+      }
+    } catch (e) {
+      // Ignore non-JSON messages
+    }
+  }, [user?.email]);
+
+  const handlePeerConnected = useCallback((peerId, username) => {
+    setWebrtcPeers(prev => [...prev, { sid: peerId, username, connected: true }]);
+  }, []);
+
+  const handlePeerDisconnected = useCallback((peerId) => {
+    setWebrtcPeers(prev => prev.filter(peer => peer.sid !== peerId));
+  }, []);
+
+  const joinRoom = useCallback(() => {
+    if (socketRef.current && localUsername && roomName) {
+      socketRef.current.emit("join", {
+        username: localUsername,
+        room: roomName
+      });
+    }
+  }, [localUsername, roomName]);
+
+  useEffect(() => {
+    socketRef.current = socketio("http://127.0.0.1:9000", {
+      transports: ['polling']
+    });
+
+    // Handle page refresh/close - cleanup WebRTC connections
+    const handleBeforeUnload = (event) => {
+      console.log('Page unloading, cleaning up WebRTC connections');
+      if (webrtcManager.current) {
+        webrtcManager.current.cleanup();
+      }
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
+    };
+
+    // Handle visibility change (tab switching, minimizing)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        console.log('Page hidden, keeping connections alive');
+        // Don't cleanup connections on hide - just log
+      } else {
+        console.log('Page visible again');
+        // When page becomes visible, check connection health
+        if (webrtcManager.current) {
+          console.log(`Checking connections: ${webrtcManager.current.peers.size} active`);
+        }
+      }
+    };
+
+    // Add event listeners for cleanup
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('unload', handleBeforeUnload);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    socketRef.current.on("connect", () => {
+      console.log("Socket connected");
+      setConnectionStatus("connected");
+
+      webrtcManager.current = WebRTCManager.createInstance(
+        socketRef.current,
+        handleMessage,
+        handlePeerConnected,
+        handlePeerDisconnected
+      );
+
+      joinRoom();
+    });
+
+    socketRef.current.on("ready", (data) => {
+      console.log("Room joined, existing peers:", data.peers);
+      setConnectedPeers(data.peers);
+
+      if (webrtcManager.current) {
+        webrtcManager.current.setUserInfo(localUsername, roomName);
+
+        // Connect to existing peers immediately - deterministic logic prevents conflicts
+        data.peers.forEach((peer) => {
+          if (webrtcManager.current && !webrtcManager.current.hasPeer(peer.sid)) {
+            webrtcManager.current.addPeer(peer.sid, peer.username);
+          }
+        });
+      }
+    });
+
+    socketRef.current.on("new_peer", (data) => {
+      console.log("New peer joined:", data);
+      setConnectedPeers(prev => [...prev, { sid: data.sid, username: data.username }]);
+      if (webrtcManager.current) {
+        webrtcManager.current.addPeer(data.sid, data.username);
+      }
+    });
+
+    socketRef.current.on("peer_left", (data) => {
+      console.log("Peer left:", data);
+      setConnectedPeers(prev => prev.filter(peer => peer.sid !== data.sid));
+      if (webrtcManager.current) {
+        webrtcManager.current.removePeer(data.sid);
+      }
+    });
+
+    socketRef.current.on("error", (data) => {
+      console.error("Signaling server error:", data.message);
+    });
+
+    socketRef.current.on("connect_error", (error) => {
+      console.error("Connection error:", error);
+      setConnectionStatus("error");
+    });
+
+    socketRef.current.on("disconnect", (reason) => {
+      console.log("Socket disconnected:", reason);
+      setConnectionStatus("disconnected");
+      // Don't cleanup WebRTC connections on disconnect - they can survive reconnection
+    });
+
+    return () => {
+      console.log('CallScreen component unmounting, cleaning up');
+
+      // Clear timeout
+      if (joinTimeoutRef.current) {
+        clearTimeout(joinTimeoutRef.current);
+      }
+
+      // Cleanup WebRTC manager
+      if (webrtcManager.current) {
+        webrtcManager.current.cleanup();
+        webrtcManager.current = null;
+      }
+
+      // Disconnect socket
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
+
+      // Remove event listeners
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('unload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [joinRoom, handleMessage, handlePeerConnected, handlePeerDisconnected]);
 
   var toolbarOptions = [
     ['bold', 'italic', 'underline', 'strike'],
@@ -56,7 +219,7 @@ export default function NoteApp() {
   };
 
   const handleGoBack = () => {
-    navigate("/grid");
+    navigate("/notes");
   }
 
   const handleInvite = async (email) => {
@@ -66,7 +229,6 @@ export default function NoteApp() {
     console.log(email);
 
     const noteRef = doc(firestore, 'notes', noteID);
-    let documentData = [];
 
     try {
       const documentSnapshot = await getDoc(noteRef);
@@ -75,7 +237,6 @@ export default function NoteApp() {
           collaborators: arrayUnion(email)
         });
 
-        console.log('Updated document:', documentData);
         setInputToken("");
         showToast.success("User invited successfully");
       } else {
@@ -104,22 +265,22 @@ export default function NoteApp() {
     };
   }, []);
 
-  const debouncedHandleUpload = debounce(async (newNoteText, newNoteTitle) => {
-    const noteRef = doc(firestore, 'notes', noteID);
-    try {
-      await updateDoc(noteRef, {
-        note: newNoteText,
-        title: newNoteTitle,
-      });
-    } catch (error) {
-      console.error("Error updating document: ", error);
-    }
-  }, 20);
 
   const handleTextChange = (newNoteText) => {
-    if (noteText !== newNoteText) {
-      debouncedHandleUpload(newNoteText, noteTitle);
+    console.log(newNoteText);
+
+    // Broadcast text changes to all WebRTC peers
+    if (webrtcManager.current && noteText !== newNoteText) {
+      webrtcManager.current.broadcastMessage(JSON.stringify({
+        type: 'text_change',
+        content: newNoteText,
+        timestamp: Date.now(),
+        author: user?.email
+      }));
     }
+
+    // Update local state
+    setNoteText(newNoteText);
   };
 
   const handleTitleChange = async (newNoteTitle) => {
@@ -133,46 +294,7 @@ export default function NoteApp() {
     }
   };
 
-  useEffect(() => {
-    getPlainText();
-  }, []);
-
-  function getPlainText() {
-    var divElement = document.querySelector(".ql-editor");
-    if (divElement) {
-      var plainText = divElement.innerText;
-      plaintext = plainText;
-    } else {
-      console.log("Element not found.");
-    }
-  }
-
   const quillRef = useRef(null);
-
-
-
-  useEffect(() => {
-    const handleKeyPress = (event) => {
-      console.log('Key pressed:', event.key);
-      setPressedKey(event.key)
-      setCounter((counter) => counter + 1);
-    };
-    document.addEventListener('keydown', handleKeyPress);
-    return () => {
-      document.removeEventListener('keydown', handleKeyPress);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (quillRef.current) {
-      quillRef.current.getEditor().on('selection-change', (range) => {
-        if (range) {
-          const cursorPosition = range.index;
-          console.log('Cursor position:', cursorPosition);
-        }
-      });
-    }
-  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 font-['Inter',system-ui,sans-serif]">

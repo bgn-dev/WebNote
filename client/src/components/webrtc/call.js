@@ -3,7 +3,7 @@ import { useRef, useEffect, useState, useCallback } from "react";
 import socketio from "socket.io-client";
 import WebRTCManager from "./webrtc-manager";
 
-function CallScreen() {
+function Call() {
     const params = useParams();
     const localUsername = params.username;
     const roomName = params.room;
@@ -250,4 +250,4 @@ function CallScreen() {
     );
 }
 
-export default CallScreen;
+export default Call;
