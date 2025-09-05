@@ -21,6 +21,7 @@ import './quill-custom.css';
 
 import WebRTCManager from './webrtc/webrtc-manager';
 import { useAuth } from '../firebase/auth';
+import RGADocument from './crdt/rga-document';
 
 
 export default function NoteApp() {
@@ -30,7 +31,11 @@ export default function NoteApp() {
   const { noteID } = useParams();
   const { user } = useAuth();
 
-  const [noteText, setNoteText] = useState("");
+  // CRDT and editor state management (using refs to avoid React state loops)
+  const [rgaDoc, setRgaDoc] = useState(null);
+  const isApplyingRemoteChange = useRef(false);
+  const lastAppliedText = useRef(""); // Track last text applied to prevent loops
+  const operationQueue = useRef([]); // Queue operations during editor updates
   const [inputToken, setInputToken] = useState("");
   const [showInvitePopup, setShowInvitePopup] = useState(false);
 
@@ -47,18 +52,231 @@ export default function NoteApp() {
   const webrtcManager = useRef(null);
   const joinTimeoutRef = useRef(null);
 
+  // Initialize RGA document when user is available
+  useEffect(() => {
+    if (user?.email && !rgaDoc) {
+      const doc = new RGADocument(user.email);
+      setRgaDoc(doc);
+      console.log('RGA document initialized for user:', user.email);
+    }
+  }, [user?.email, rgaDoc]);
+
+  // Initialize editor content when RGA document and Quill are ready
+  useEffect(() => {
+    if (rgaDoc && quillRef.current) {
+      const editor = quillRef.current.getEditor();
+      const currentText = rgaDoc.getText();
+      
+      // Initialize with existing CRDT content without triggering onChange
+      if (currentText && currentText !== editor.getText().replace(/\n$/, '')) {
+        isApplyingRemoteChange.current = true;
+        editor.setText(currentText, 'silent');
+        lastAppliedText.current = currentText;
+        isApplyingRemoteChange.current = false;
+      } else {
+        // Initialize tracking with current content
+        lastAppliedText.current = editor.getText().replace(/\n$/, '');
+      }
+      
+      console.log('Initialized Quill editor with CRDT content:', `"${lastAppliedText.current}"`);
+    }
+  }, [rgaDoc]);
+
+  // Helper function to find insertion position in text diff
+  const findInsertPosition = (oldText, newText) => {
+    let i = 0;
+    while (i < oldText.length && i < newText.length && oldText[i] === newText[i]) {
+      i++;
+    }
+    return i;
+  };
+
+  // Helper function to find deletion position in text diff
+  const findDeletePosition = (oldText, newText) => {
+    let i = 0;
+    while (i < oldText.length && i < newText.length && oldText[i] === newText[i]) {
+      i++;
+    }
+    return i;
+  };
+
+  // Generate RGA operations WITHOUT applying them locally
+  const generateOperationsFromTextDiff = (oldText, newText, rgaDocument) => {
+    const operations = [];
+    
+    // Use a proper diff algorithm instead of simple length comparison
+    const changes = computeTextDiff(oldText, newText);
+    
+    for (const change of changes) {
+      if (change.type === 'insert') {
+        let leftOpId = change.index > 0 ? rgaDocument.getOpIdAtIndex(change.index - 1) : null;
+        
+        for (const char of change.text) {
+          // CRITICAL FIX: Generate opId WITHOUT applying the operation locally
+          const opId = rgaDocument.generateOpId();
+          operations.push(rgaDocument.createOperation('insert', {
+            opId,
+            char,
+            leftId: leftOpId
+          }));
+          leftOpId = opId; // For chaining multiple insertions
+        }
+      } else if (change.type === 'delete') {
+        for (let i = 0; i < change.count; i++) {
+          const opId = rgaDocument.getOpIdAtIndex(change.index);
+          if (opId) {
+            // CRITICAL FIX: Generate delete operation WITHOUT applying locally
+            operations.push(rgaDocument.createOperation('delete', {
+              targetId: opId
+            }));
+          }
+        }
+      }
+    }
+    
+    return operations;
+  };
+
+  // Proper text diff algorithm (simplified implementation)
+  const computeTextDiff = (oldText, newText) => {
+    const changes = [];
+    
+    // Simple implementation - find single change point
+    let i = 0;
+    while (i < oldText.length && i < newText.length && oldText[i] === newText[i]) {
+      i++;
+    }
+    
+    if (i === oldText.length && i === newText.length) {
+      return changes; // No changes
+    }
+    
+    if (newText.length > oldText.length) {
+      // Insertion
+      const insertedText = newText.slice(i, i + (newText.length - oldText.length));
+      changes.push({
+        type: 'insert',
+        index: i,
+        text: insertedText
+      });
+    } else if (newText.length < oldText.length) {
+      // Deletion
+      const deletedCount = oldText.length - newText.length;
+      changes.push({
+        type: 'delete',
+        index: i,
+        count: deletedCount
+      });
+    } else {
+      // Replacement (delete then insert)
+      let j = oldText.length - 1;
+      let k = newText.length - 1;
+      while (j >= i && k >= i && oldText[j] === newText[k]) {
+        j--;
+        k--;
+      }
+      
+      if (j >= i) {
+        changes.push({
+          type: 'delete',
+          index: i,
+          count: j - i + 1
+        });
+      }
+      
+      if (k >= i) {
+        changes.push({
+          type: 'insert',
+          index: i,
+          text: newText.slice(i, k + 1)
+        });
+      }
+    }
+    
+    return changes;
+  };
+
   // Memoized callbacks to prevent recreating WebRTC manager
   const handleMessage = useCallback((username, message) => {
+    if (!rgaDoc) return;
+    
     try {
-      const parsedMessage = JSON.parse(message);
-      if (parsedMessage.type === 'text_change' && parsedMessage.author !== user?.email) {
-        console.log(parsedMessage.content);
-        setNoteText(parsedMessage.content);
+      const data = JSON.parse(message);
+      
+      if (data.type === 'crdt_operation') {
+        console.log('Applying CRDT operation:', data.operation, 'from user:', data.operation.userId);
+        
+        // CRITICAL: Set flag BEFORE any processing
+        isApplyingRemoteChange.current = true;
+        
+        // Apply operation with deduplication
+        const wasApplied = rgaDoc.applyOperation(data.operation);
+        
+        if (wasApplied !== false) { // Only update UI if operation was actually applied
+          // Get updated text from CRDT
+          const newText = rgaDoc.getText();
+          console.log('Updated text after remote op:', `"${newText}"`);
+          
+          // CRITICAL: Update Quill directly without React state
+          if (quillRef.current) {
+            const editor = quillRef.current.getEditor();
+            const currentQuillText = editor.getText().replace(/\n$/, '');
+            
+            if (currentQuillText !== newText) {
+              console.log('Updating Quill editor with remote changes');
+              
+              // Use silent update to prevent onChange
+              const range = editor.getSelection();
+              editor.setText(newText, 'silent');
+              
+              // Restore cursor position if possible
+              if (range) {
+                const newLength = newText.length;
+                const safeIndex = Math.min(range.index, newLength);
+                editor.setSelection(safeIndex, 0, 'silent');
+              }
+            }
+          }
+          
+          // Update our text tracking
+          lastAppliedText.current = newText;
+        }
+        
+        // CRITICAL: Clear flag synchronously after ALL updates
+        isApplyingRemoteChange.current = false;
+      } 
+      else if (data.type === 'format_operation' && data.operation.userId !== user?.email) {
+        console.log('Applying remote format operation:', data.operation);
+        
+        // Apply remote formatting operation to Quill
+        applyRemoteFormatting(data.operation);
       }
     } catch (e) {
       // Ignore non-JSON messages
     }
-  }, [user?.email]);
+  }, [rgaDoc, user?.email]);
+
+  // Apply remote formatting operation to Quill editor
+  const applyRemoteFormatting = (formatOp) => {
+    if (!quillRef.current) return;
+    
+    const editor = quillRef.current.getEditor();
+    
+    // Convert opId anchors back to text indices
+    const startIndex = rgaDoc.getIndexOfOpId(formatOp.start.opId);
+    const endIndex = rgaDoc.getIndexOfOpId(formatOp.end.opId);
+    
+    if (startIndex !== -1 && endIndex !== -1) {
+      const actualStartIndex = formatOp.start.type === 'before' ? startIndex : startIndex + 1;
+      const actualEndIndex = formatOp.end.type === 'after' ? endIndex + 1 : endIndex;
+      const length = actualEndIndex - actualStartIndex;
+      
+      console.log(`Applying remote format ${formatOp.markType} to range [${actualStartIndex}-${actualEndIndex}]`);
+      
+      // Apply formatting without triggering onChange
+      editor.formatText(actualStartIndex, length, formatOp.markType, true, 'api');
+    }
+  };
 
   const handlePeerConnected = useCallback((peerId, username) => {
     setWebrtcPeers(prev => [...prev, { sid: peerId, username, connected: true }]);
@@ -247,40 +465,155 @@ export default function NoteApp() {
     }
   };
 
+  // Load initial document content and setup Firestore sync
   useEffect(() => {
+    if (!rgaDoc) return;
+    
     const noteRef = doc(firestore, 'notes', noteID);
     const unsubscribe = onSnapshot(noteRef, (docSnapshot) => {
       if (docSnapshot.exists()) {
         const data = docSnapshot.data();
-        if (noteText !== data.note) {
-          setNoteText(data.note);
+        
+        // Only initialize RGA document once with existing content
+        const currentRGAText = rgaDoc.getText();
+        if (!currentRGAText && data.note) {
+          console.log('Loading initial document content into CRDT');
+          // Insert initial content into RGA document
+          for (let i = 0; i < data.note.length; i++) {
+            const char = data.note[i];
+            const leftOpId = i > 0 ? rgaDoc.getOpIdAtIndex(i - 1) : null;
+            rgaDoc.insert(char, leftOpId);
+          }
+          
+          // Update editor with initial content
+          if (quillRef.current) {
+            isApplyingRemoteChange.current = true;
+            quillRef.current.getEditor().setText(data.note, 'silent');
+            lastAppliedText.current = data.note;
+            isApplyingRemoteChange.current = false;
+          }
         }
+        
         setNoteTitle(data.title);
       } else {
         console.log('Document not found');
       }
     });
+    
     return () => {
       unsubscribe();
     };
-  }, []);
+  }, [rgaDoc]);
 
 
-  const handleTextChange = (newNoteText) => {
-    console.log(newNoteText);
-
-    // Broadcast text changes to all WebRTC peers
-    if (webrtcManager.current && noteText !== newNoteText) {
-      webrtcManager.current.broadcastMessage(JSON.stringify({
-        type: 'text_change',
-        content: newNoteText,
-        timestamp: Date.now(),
-        author: user?.email
-      }));
+  // Handle text content changes (ReactQuill onChange) - React optimized version
+  const handleTextChange = useCallback((htmlContent, delta, source, editor) => {
+    // CRITICAL: Skip if applying remote changes or no RGA document
+    if (!rgaDoc || isApplyingRemoteChange.current) {
+      return;
     }
+    
+    // CRITICAL: Only process user changes, ignore API/programmatic changes
+    if (source !== 'user') {
+      return;
+    }
+    
+    // Get current text from editor
+    const currentText = editor.getText().replace(/\n$/, ''); // Remove trailing newline
+    
+    // CRITICAL: Prevent processing if text hasn't actually changed
+    if (currentText === lastAppliedText.current) {
+      return;
+    }
+    
+    // CRITICAL: Prevent double processing during rapid changes
+    if (isApplyingRemoteChange.current) {
+      return;
+    }
+    
+    console.log('Processing LOCAL text change from:', `"${lastAppliedText.current}"`, 'to:', `"${currentText}"`);
+    
+    // Generate operations based on text difference
+    const operations = generateOperationsFromTextDiff(lastAppliedText.current, currentText, rgaDoc);
+    
+    if (operations.length === 0) {
+      return;
+    }
+    
+    console.log('Generated', operations.length, 'operations for local change');
+    
+    // Update our tracking of last applied text IMMEDIATELY
+    lastAppliedText.current = currentText;
+    
+    // Process operations
+    operations.forEach(op => {
+      // Apply locally first (this will be deduplicated if we receive it back)
+      rgaDoc.applyOperation(op);
+      
+      // Broadcast to peers
+      if (webrtcManager.current) {
+        webrtcManager.current.broadcastMessage(JSON.stringify({
+          type: 'crdt_operation',
+          operation: op
+        }));
+      }
+    });
+    
+  }, [rgaDoc, user?.email]);
 
-    // Update local state
-    setNoteText(newNoteText);
+  // Handle formatting changes (ReactQuill onChangeSelection with delta)
+  const handleSelectionChange = (range, source, editor) => {
+    if (!rgaDoc || source !== 'user' || !editor) return;
+    
+    // We'll capture deltas in a different way - through a ref
+    console.log('Selection changed:', range, source);
+  };
+
+  // Extract formatting operations from Quill delta
+  const extractFormatOperations = (delta, editor) => {
+    const operations = [];
+    let index = 0;
+    
+    for (const op of delta.ops) {
+      if (op.retain && op.attributes) {
+        // Format operation detected
+        const startIndex = index;
+        const endIndex = index + op.retain;
+        
+        // Get text at this range to verify it exists in RGA
+        const rangeText = editor.getText(startIndex, op.retain);
+        console.log(`Formatting range [${startIndex}-${endIndex}]:`, rangeText, 'with attributes:', op.attributes);
+        
+        // Convert each attribute to a format operation
+        Object.entries(op.attributes).forEach(([markType, value]) => {
+          if (value === true || value) { // Only if attribute is being applied
+            const startOpId = rgaDoc.getOpIdAtIndex(startIndex);
+            const endOpId = rgaDoc.getOpIdAtIndex(endIndex - 1);
+            
+            if (startOpId && endOpId) {
+              operations.push({
+                action: 'addMark',
+                opId: `${Date.now()}_${Math.random()}@${user?.email}`,
+                markType,
+                start: { type: 'before', opId: startOpId },
+                end: { type: 'after', opId: endOpId },
+                timestamp: Date.now(),
+                userId: user?.email
+              });
+            }
+          }
+        });
+      }
+      
+      // Update index based on operation type
+      if (op.retain) {
+        index += op.retain;
+      } else if (op.insert) {
+        index += typeof op.insert === 'string' ? op.insert.length : 1;
+      }
+    }
+    
+    return operations;
   };
 
   const handleTitleChange = async (newNoteTitle) => {
@@ -403,10 +736,8 @@ export default function NoteApp() {
             ref={quillRef}
             modules={module}
             theme="snow"
-            value={noteText}
-            onChange={(newNoteText) => {
-              handleTextChange(newNoteText);
-            }}
+            onChange={handleTextChange}
+            onChangeSelection={handleSelectionChange}
             placeholder="Start writing your note..."
           />
         </div>
