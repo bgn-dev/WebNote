@@ -10,6 +10,7 @@ class RGADocument {
     this.counter = 0;
     this.characters = new Map(); // opId -> RGANode
     this.root = null; // Root node for the sequence
+    this.appliedOperations = new Set(); // Track applied operation IDs for deduplication
     
     // Initialize with root node (invisible)
     this.root = this.createRootNode();
@@ -140,19 +141,55 @@ class RGADocument {
   }
 
   /**
+   * Create unique operation identifier for deduplication
+   * @param {Object} operation - Operation to create ID for
+   * @returns {string} - Unique operation identifier
+   */
+  createOperationId(operation) {
+    if (operation.action === 'insert') {
+      return `insert-${operation.opId}`;
+    } else if (operation.action === 'delete') {
+      return `delete-${operation.targetId}-${operation.timestamp}-${operation.userId}`;
+    }
+    return `${operation.action}-${operation.timestamp}-${operation.userId}`;
+  }
+
+  /**
    * Apply remote operation to this document
    * @param {Object} operation - Remote operation to apply
+   * @returns {boolean} - Whether the operation was actually applied
    */
   applyOperation(operation) {
-    switch (operation.action) {
-      case 'insert':
-        this.applyRemoteInsert(operation);
-        break;
-      case 'delete':
-        this.applyRemoteDelete(operation);
-        break;
-      default:
-        console.warn('Unknown operation type:', operation.action);
+    // Create operation ID for deduplication
+    const operationId = this.createOperationId(operation);
+    
+    // Check if we've already applied this operation
+    if (this.appliedOperations.has(operationId)) {
+      return false; // Already applied, skip
+    }
+    
+    // Mark as applied before processing
+    this.appliedOperations.add(operationId);
+    
+    try {
+      switch (operation.action) {
+        case 'insert':
+          this.applyRemoteInsert(operation);
+          return true;
+        case 'delete':
+          this.applyRemoteDelete(operation);
+          return true;
+        default:
+          console.warn('Unknown operation type:', operation.action);
+          // Remove from applied set if it's an unknown operation
+          this.appliedOperations.delete(operationId);
+          return false;
+      }
+    } catch (error) {
+      console.error('Error applying operation:', error);
+      // Remove from applied set if application failed
+      this.appliedOperations.delete(operationId);
+      return false;
     }
   }
 
