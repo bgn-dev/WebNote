@@ -12,6 +12,10 @@ class RGADocument {
     this.root = null; // Root node for the sequence
     this.appliedOperations = new Set(); // Track applied operation IDs for deduplication
     
+    // Peritext formatting system
+    this.marks = new Map(); // markId -> MarkObject
+    this.markCounter = 0; // Counter for generating unique mark IDs
+    
     // Initialize with root node (invisible)
     this.root = this.createRootNode();
   }
@@ -40,6 +44,13 @@ class RGADocument {
    */
   generateOpId() {
     return `${++this.counter}@${this.userId}`;
+  }
+
+  /**
+   * Generate unique mark ID for formatting
+   */
+  generateMarkId() {
+    return `${++this.markCounter}@${this.userId}`;
   }
 
   /**
@@ -150,6 +161,10 @@ class RGADocument {
       return `insert-${operation.opId}`;
     } else if (operation.action === 'delete') {
       return `delete-${operation.targetId}-${operation.timestamp}-${operation.userId}`;
+    } else if (operation.action === 'addMark') {
+      return `addMark-${operation.markId}`;
+    } else if (operation.action === 'removeMark') {
+      return `removeMark-${operation.markId}-${operation.timestamp}-${operation.userId}`;
     }
     return `${operation.action}-${operation.timestamp}-${operation.userId}`;
   }
@@ -178,6 +193,12 @@ class RGADocument {
           return true;
         case 'delete':
           this.applyRemoteDelete(operation);
+          return true;
+        case 'addMark':
+          this.applyRemoteMark(operation);
+          return true;
+        case 'removeMark':
+          this.applyRemoteMarkRemoval(operation);
           return true;
         default:
           console.warn('Unknown operation type:', operation.action);
@@ -232,6 +253,91 @@ class RGADocument {
    */
   applyRemoteDelete(op) {
     this.delete(op.targetId);
+  }
+
+  /**
+   * Add formatting mark (Peritext operation)
+   * @param {string} startOpId - OpId of character where mark starts
+   * @param {string} endOpId - OpId of character where mark ends  
+   * @param {string} markType - Type of mark (bold, italic, etc.)
+   * @param {Object} attributes - Mark attributes
+   * @returns {string} - Mark ID
+   */
+  addMark(startOpId, endOpId, markType, attributes = {}) {
+    const markId = this.generateMarkId();
+    
+    // Validate anchor positions exist
+    if (!this.characters.has(startOpId) || !this.characters.has(endOpId)) {
+      throw new Error(`Invalid anchor positions: ${startOpId} or ${endOpId} not found`);
+    }
+    
+    const mark = {
+      markId,
+      startOpId,
+      endOpId,
+      markType,
+      attributes,
+      deleted: false,
+      timestamp: Date.now(),
+      userId: this.userId
+    };
+    
+    this.marks.set(markId, mark);
+    console.log('Added mark:', mark);
+    
+    return markId;
+  }
+
+  /**
+   * Remove formatting mark
+   * @param {string} markId - ID of mark to remove
+   */
+  removeMark(markId) {
+    const mark = this.marks.get(markId);
+    if (mark && !mark.deleted) {
+      mark.deleted = true;
+      console.log('Removed mark:', markId);
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Apply remote mark operation
+   * @param {Object} op - Mark operation
+   */
+  applyRemoteMark(op) {
+    if (this.marks.has(op.markId)) {
+      return; // Already applied
+    }
+    
+    // Ensure anchor positions exist
+    if (!this.characters.has(op.startOpId) || !this.characters.has(op.endOpId)) {
+      console.warn(`Missing anchors for mark ${op.markId}: ${op.startOpId} or ${op.endOpId}`);
+      return;
+    }
+    
+    const mark = {
+      markId: op.markId,
+      startOpId: op.startOpId,
+      endOpId: op.endOpId,
+      markType: op.markType,
+      attributes: op.attributes || {},
+      deleted: false,
+      timestamp: op.timestamp,
+      userId: op.userId
+    };
+    
+    this.marks.set(op.markId, mark);
+    console.log('Applied remote mark:', mark);
+  }
+
+  /**
+   * Apply remote mark removal
+   * @param {Object} op - Mark removal operation
+   */
+  applyRemoteMarkRemoval(op) {
+    this.removeMark(op.markId);
   }
 
   /**
@@ -303,6 +409,96 @@ class RGADocument {
   }
 
   /**
+   * Get marks that apply to a specific character position
+   * @param {string} opId - Character operation ID
+   * @returns {Array} - Array of marks that apply to this character
+   */
+  getMarksForCharacter(opId) {
+    const activeMarks = [];
+    const sequence = this.getOrderedSequence();
+    const characterIndex = sequence.findIndex(node => node.opId === opId);
+    
+    if (characterIndex === -1) return activeMarks;
+    
+    // Check all marks to see which ones span this character
+    for (const mark of this.marks.values()) {
+      if (mark.deleted) continue;
+      
+      const startIndex = sequence.findIndex(node => node.opId === mark.startOpId);
+      const endIndex = sequence.findIndex(node => node.opId === mark.endOpId);
+      
+      // Mark applies if character is within the span (inclusive start, inclusive end)
+      if (startIndex !== -1 && endIndex !== -1 && 
+          characterIndex >= startIndex && characterIndex <= endIndex) {
+        activeMarks.push(mark);
+      }
+    }
+    
+    return activeMarks;
+  }
+
+  /**
+   * Get formatted content with marks applied (for Quill delta format)
+   * @returns {Object} - Quill delta with text and formatting
+   */
+  getFormattedContent() {
+    const sequence = this.getOrderedSequence();
+    const visibleCharacters = sequence.filter(node => !node.deleted && node.char !== null);
+    
+    if (visibleCharacters.length === 0) {
+      return { ops: [{ insert: "" }] };
+    }
+    
+    const ops = [];
+    let currentText = "";
+    let currentAttributes = {};
+    
+    for (let i = 0; i < visibleCharacters.length; i++) {
+      const char = visibleCharacters[i];
+      const marks = this.getMarksForCharacter(char.opId);
+      
+      // Build attributes from active marks
+      const attributes = {};
+      for (const mark of marks) {
+        if (mark.markType === 'bold') {
+          attributes.bold = true;
+        } else if (mark.markType === 'italic') {
+          attributes.italic = true;
+        } else if (mark.markType === 'underline') {
+          attributes.underline = true;
+        }
+        // Add other formatting types as needed
+      }
+      
+      // If attributes changed, flush current text and start new operation
+      if (JSON.stringify(attributes) !== JSON.stringify(currentAttributes)) {
+        if (currentText) {
+          const op = { insert: currentText };
+          if (Object.keys(currentAttributes).length > 0) {
+            op.attributes = currentAttributes;
+          }
+          ops.push(op);
+          currentText = "";
+        }
+        currentAttributes = attributes;
+      }
+      
+      currentText += char.char;
+    }
+    
+    // Flush remaining text
+    if (currentText) {
+      const op = { insert: currentText };
+      if (Object.keys(currentAttributes).length > 0) {
+        op.attributes = currentAttributes;
+      }
+      ops.push(op);
+    }
+    
+    return { ops };
+  }
+
+  /**
    * Generate operation object for broadcasting
    * @param {string} action - 'insert' or 'delete'
    * @param {Object} params - Action-specific parameters
@@ -328,6 +524,20 @@ class RGADocument {
         return {
           ...baseOp,
           targetId: params.targetId
+        };
+      case 'addMark':
+        return {
+          ...baseOp,
+          markId: params.markId,
+          startOpId: params.startOpId,
+          endOpId: params.endOpId,
+          markType: params.markType,
+          attributes: params.attributes || {}
+        };
+      case 'removeMark':
+        return {
+          ...baseOp,
+          markId: params.markId
         };
       default:
         throw new Error(`Unknown action: ${action}`);
