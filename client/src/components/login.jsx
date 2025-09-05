@@ -27,7 +27,7 @@ export default function Login() {
                 await login(email, password);
             }
             
-            navigate('/grid');
+            navigate('/notes');
         } catch (error) {
             setError(`Failed to ${isSignUp ? 'create account' : 'sign in'}: ${error.message}`);
         } finally {
@@ -40,7 +40,7 @@ export default function Login() {
             setError('');
             setLoading(true);
             await loginWithGoogle();
-            navigate('/grid');
+            navigate('/notes');
         } catch (error) {
             setError('Failed to sign in with Google: ' + error.message);
         } finally {
