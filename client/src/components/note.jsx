@@ -21,7 +21,7 @@ import './quill-custom.css';
 
 import WebRTCManager from './webrtc/webrtc-manager';
 import { useAuth } from '../firebase/auth';
-import RGADocument from './crdt/rga-document';
+import PeritextDocument from './crdt/rga-document';
 
 
 export default function NoteApp() {
@@ -55,7 +55,7 @@ export default function NoteApp() {
   // Initialize RGA document when user is available
   useEffect(() => {
     if (user?.email && !rgaDoc) {
-      const doc = new RGADocument(user.email);
+      const doc = new PeritextDocument(user.email);
       setRgaDoc(doc);
       console.log('RGA document initialized for user:', user.email);
     }
@@ -109,42 +109,90 @@ export default function NoteApp() {
       if (op.retain && op.attributes) {
         // This is a formatting operation - apply attributes to the retained range
         const length = op.retain;
-        const startOpId = rgaDocument.getOpIdAtIndex(currentIndex);
-        const endOpId = rgaDocument.getOpIdAtIndex(currentIndex + length - 1);
+        // For mark operations, we need to use position indices that can be resolved by each peer
+        const startIndex = currentIndex;
+        const endIndex = currentIndex + length - 1;
         
-        if (startOpId && endOpId) {
-          // Generate mark operations for each attribute
-          for (const [attrName, attrValue] of Object.entries(op.attributes)) {
-            if (attrValue) {
-              // Add mark
-              const markId = rgaDocument.generateMarkId();
-              const markOp = rgaDocument.createOperation('addMark', {
-                markId,
-                startOpId,
-                endOpId,
-                markType: attrName,
-                attributes: { [attrName]: attrValue }
-              });
-              operations.push(markOp);
-            } else {
-              // Remove mark (find existing marks and remove them)
-              const sequence = rgaDocument.getOrderedSequence();
-              const startIndex = sequence.findIndex(node => node.opId === startOpId);
-              const endIndex = sequence.findIndex(node => node.opId === endOpId);
+        // Generate mark operations for each attribute
+        for (const [attrName, attrValue] of Object.entries(op.attributes)) {
+          if (attrValue) {
+            // Add mark using position indices instead of specific opIds
+            const markId = rgaDocument.generateMarkId();
+            const markOp = {
+              action: 'addMark',
+              markId,
+              startIndex, // Use position index instead of opId
+              endIndex,   // Use position index instead of opId
+              markType: attrName,
+              attributes: { [attrName]: attrValue },
+              timestamp: Date.now(),
+              userId: rgaDocument.userId,
+              counter: rgaDocument.counter
+            };
+            operations.push(markOp);
+          } else {
+            // Remove mark (find existing marks and remove them)  
+            const startIndex = currentIndex;
+            const endIndex = currentIndex + length - 1;
+            
+            // Find marks to split/remove according to Peritext paper rules
+            for (const mark of rgaDocument.marks.values()) {
+              if (mark.deleted || mark.markType !== attrName) continue;
               
-              // Find marks to remove
-              for (const mark of rgaDocument.marks.values()) {
-                if (mark.deleted || mark.markType !== attrName) continue;
+              // Get current position indices for this mark
+              const sequence = rgaDocument.getOrderedSequence();
+              const markStartIndex = sequence.findIndex(node => node.opId === mark.start.opId);
+              const markEndIndex = sequence.findIndex(node => node.opId === mark.end.opId);
+              
+              // Check if this mark overlaps with the range we're unformatting
+              if (markStartIndex <= endIndex && markEndIndex >= startIndex) {
+                // Calculate intersection between mark and unformat range
+                const intersectionStart = Math.max(markStartIndex, startIndex);
+                const intersectionEnd = Math.min(markEndIndex, endIndex);
                 
-                const markStartIndex = sequence.findIndex(node => node.opId === mark.startOpId);
-                const markEndIndex = sequence.findIndex(node => node.opId === mark.endOpId);
+                // Remove the original mark
+                const removeOp = {
+                  action: 'removeMark',
+                  markId: mark.markId,
+                  timestamp: Date.now(),
+                  userId: rgaDocument.userId,
+                  counter: rgaDocument.counter
+                };
+                operations.push(removeOp);
                 
-                // Check if this mark overlaps with the range we're unformatting
-                if (markStartIndex <= endIndex && markEndIndex >= startIndex) {
-                  const removeOp = rgaDocument.createOperation('removeMark', {
-                    markId: mark.markId
-                  });
-                  operations.push(removeOp);
+                // Create new marks for the parts that should remain formatted
+                // Left part: from mark start to intersection start
+                if (markStartIndex < intersectionStart) {
+                  const leftMarkId = rgaDocument.generateMarkId();
+                  const leftMarkOp = {
+                    action: 'addMark',
+                    markId: leftMarkId,
+                    startIndex: markStartIndex,
+                    endIndex: intersectionStart - 1,
+                    markType: attrName,
+                    attributes: mark.attributes,
+                    timestamp: Date.now(),
+                    userId: rgaDocument.userId,
+                    counter: rgaDocument.counter
+                  };
+                  operations.push(leftMarkOp);
+                }
+                
+                // Right part: from intersection end to mark end
+                if (intersectionEnd < markEndIndex) {
+                  const rightMarkId = rgaDocument.generateMarkId();
+                  const rightMarkOp = {
+                    action: 'addMark',
+                    markId: rightMarkId,
+                    startIndex: intersectionEnd + 1,
+                    endIndex: markEndIndex,
+                    markType: attrName,
+                    attributes: mark.attributes,
+                    timestamp: Date.now(),
+                    userId: rgaDocument.userId,
+                    counter: rgaDocument.counter
+                  };
+                  operations.push(rightMarkOp);
                 }
               }
             }
@@ -158,39 +206,50 @@ export default function NoteApp() {
       }
     }
     
-    console.log('Generated', operations.length, 'formatting operations');
     return operations;
   };
 
-  // Generate RGA operations WITHOUT applying them locally
-  const generateOperationsFromTextDiff = (oldText, newText, rgaDocument) => {
+  // Generate RGA operations from Quill delta operations
+  const generateOperationsFromQuillDelta = (delta, rgaDocument) => {
     const operations = [];
+    let currentIndex = 0;
     
-    // Use a proper diff algorithm instead of simple length comparison
-    const changes = computeTextDiff(oldText, newText);
-    
-    for (const change of changes) {
-      if (change.type === 'insert') {
-        let leftOpId = change.index > 0 ? rgaDocument.getOpIdAtIndex(change.index - 1) : null;
+    for (const op of delta.ops) {
+      if (op.retain) {
+        currentIndex += op.retain;
+      } else if (op.insert) {
+        const text = typeof op.insert === 'string' ? op.insert : '';
         
-        for (const char of change.text) {
-          // Generate opId WITHOUT applying the operation locally
-          const opId = rgaDocument.generateOpId();
-          operations.push(rgaDocument.createOperation('insert', {
-            opId,
+        let leftOpId = rgaDocument.getLeftOpIdForCursor(currentIndex);
+        
+        for (let i = 0; i < text.length; i++) {
+          const char = text[i];
+          
+          console.log(`[SENDER] ${char}: leftOpId=${leftOpId}`);
+          
+          // Use proper CRDT insert method
+          const actualOpId = rgaDocument.insert(char, leftOpId);
+          console.log(`[SENDER] After insert: "${rgaDocument.getText()}" (opId: ${actualOpId})`);
+          
+          // Create operation for broadcasting with the actual opId
+          const operation = rgaDocument.createOperation('insert', {
+            opId: actualOpId,
             char,
             leftId: leftOpId
-          }));
-          leftOpId = opId; // For chaining multiple insertions
+          });
+          operations.push(operation);
+          leftOpId = actualOpId;
+          currentIndex++;
         }
-      } else if (change.type === 'delete') {
-        for (let i = 0; i < change.count; i++) {
-          const opId = rgaDocument.getOpIdAtIndex(change.index);
+      } else if (op.delete) {
+        for (let i = 0; i < op.delete; i++) {
+          const opId = rgaDocument.getOpIdAtIndex(currentIndex);
           if (opId) {
-            // Generate delete operation WITHOUT applying locally
-            operations.push(rgaDocument.createOperation('delete', {
+            const operation = rgaDocument.createOperation('delete', {
               targetId: opId
-            }));
+            });
+            rgaDocument.applyRemoteDelete(operation);
+            operations.push(operation);
           }
         }
       }
@@ -266,16 +325,17 @@ export default function NoteApp() {
       const data = JSON.parse(message);
       
       if (data.type === 'crdt_operation') {
-        console.log('Applying CRDT operation:', data.operation, 'from user:', data.operation.userId);
+        const op = data.operation;
+        console.log(`[RECEIVER] ${op.char}(${op.leftId}) from ${op.userId}`);
         
         // Set flag BEFORE any processing
         isApplyingRemoteChange.current = true;
         
         // Apply operation with deduplication
-        const wasApplied = rgaDoc.applyOperation(data.operation);
+        const wasApplied = rgaDoc.applyOperation(op);
         
         if (wasApplied !== false) { // Only update UI if operation was actually applied
-          console.log('Remote operation applied successfully, updating UI');
+          console.log(`[RECEIVER] Applied: "${rgaDoc.getText()}"`);
           
           // Update Quill with formatted content from CRDT
           if (quillRef.current) {
@@ -286,7 +346,6 @@ export default function NoteApp() {
             const formattedContent = rgaDoc.getFormattedContent();
             const newText = rgaDoc.getText();
             
-            console.log('Updating Quill with formatted content:', formattedContent);
             
             // Apply both text and formatting using Quill delta
             editor.setContents(formattedContent, 'silent');
@@ -515,7 +574,8 @@ export default function NoteApp() {
           // Insert initial content into RGA document
           for (let i = 0; i < data.note.length; i++) {
             const char = data.note[i];
-            const leftOpId = i > 0 ? rgaDoc.getOpIdAtIndex(i - 1) : null;
+            // Use cursor positioning for character-by-character insertion
+            const leftOpId = rgaDoc.getLeftOpIdForCursor(i);
             rgaDoc.insert(char, leftOpId);
           }
           
@@ -552,26 +612,29 @@ export default function NoteApp() {
       return;
     }
     
-    console.log('handleTextChange called with delta:', delta);
-    
     // Get current text from editor
     const currentText = editor.getText().replace(/\n$/, ''); // Remove trailing newline
     
     // Process text changes
     if (currentText !== lastAppliedText.current) {
-      console.log('Processing LOCAL text change from:', `"${lastAppliedText.current}"`, 'to:', `"${currentText}"`);
+      console.log(`\n[SENDER] "${lastAppliedText.current}" -> "${currentText}"`);
       
-      // Generate text operations
-      const textOperations = generateOperationsFromTextDiff(lastAppliedText.current, currentText, rgaDoc);
+      // Generate text operations from Quill delta instead of text diff
+      const textOperations = generateOperationsFromQuillDelta(delta, rgaDoc);
       
       // Update tracking
       lastAppliedText.current = currentText;
       
-      // Process text operations
+      console.log(`[SENDER] Broadcasting: ${textOperations.map(op => `${op.char}(${op.leftId})`).join(' ')}`);
+      console.log(`[SENDER] CRDT final: "${rgaDoc.getText()}"`);
+      
+      // Operations already applied during generation, just broadcast
       textOperations.forEach(op => {
-        rgaDoc.applyOperation(op);
+        // Mark as applied to prevent double application from remote updates
+        const operationId = rgaDoc.createOperationId(op);
+        rgaDoc.appliedOperations.add(operationId);
         
-        // Broadcast to peers
+        // Broadcast to peers (already applied locally during generation)  
         if (webrtcManager.current) {
           webrtcManager.current.broadcastMessage(JSON.stringify({
             type: 'crdt_operation',

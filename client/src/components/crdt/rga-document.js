@@ -1,10 +1,10 @@
 /**
- * RGA (Replicated Growable Array) CRDT Implementation
- * Based on the RGA algorithm described in academic literature
- * Provides conflict-free collaborative text editing
+ * Peritext: A CRDT for Collaborative Rich Text Editing
+ * Full implementation based on the Peritext paper by Litt et al.
+ * Provides conflict-free collaborative rich text editing with intent preservation
  */
 
-class RGADocument {
+class PeritextDocument {
   constructor(userId) {
     this.userId = userId;
     this.counter = 0;
@@ -15,6 +15,9 @@ class RGADocument {
     // Peritext formatting system
     this.marks = new Map(); // markId -> MarkObject
     this.markCounter = 0; // Counter for generating unique mark IDs
+    
+    // Op-sets for anchor positions (Algorithm 1 from paper)
+    this.opSets = new Map(); // anchorPosition -> Set of operations
     
     // Initialize with root node (invisible)
     this.root = this.createRootNode();
@@ -50,7 +53,123 @@ class RGADocument {
    * Generate unique mark ID for formatting
    */
   generateMarkId() {
-    return `${++this.markCounter}@${this.userId}`;
+    return `mark-${++this.markCounter}@${this.userId}`;
+  }
+
+  /**
+   * Update op-set at anchor position (Algorithm 1 from paper)
+   * @param {Object} anchor - {opId, type}
+   * @param {string} operation - 'addMark' or 'removeMark'
+   * @param {Object} mark - Mark object
+   */
+  updateOpSetAtAnchor(anchor, operation, mark) {
+    const anchorKey = `${anchor.opId}:${anchor.type}`;
+    
+    if (!this.opSets.has(anchorKey)) {
+      this.opSets.set(anchorKey, new Set());
+    }
+    
+    const opSet = this.opSets.get(anchorKey);
+    
+    if (operation === 'addMark') {
+      opSet.add({
+        type: 'addMark',
+        markId: mark.markId,
+        markType: mark.markType,
+        timestamp: mark.timestamp,
+        userId: mark.userId,
+        counter: mark.counter
+      });
+    } else if (operation === 'removeMark') {
+      opSet.add({
+        type: 'removeMark',
+        markId: mark.markId,
+        timestamp: mark.timestamp,
+        userId: mark.userId,
+        counter: mark.counter
+      });
+    }
+  }
+
+  /**
+   * Find previous op-set (FindPrevious from Algorithm 1)
+   * @param {string} anchorKey - Anchor position key
+   * @returns {Set} - Closest preceding op-set
+   */
+  findPreviousOpSet(anchorKey) {
+    const sequence = this.getOrderedSequence();
+    const [targetOpId, targetType] = anchorKey.split(':');
+    
+    // Find the character in sequence
+    const charIndex = sequence.findIndex(node => node.opId === targetOpId);
+    if (charIndex === -1) return new Set();
+    
+    // Iterate backwards to find previous op-set
+    for (let i = charIndex - 1; i >= 0; i--) {
+      const node = sequence[i];
+      const beforeKey = `${node.opId}:before`;
+      const afterKey = `${node.opId}:after`;
+      
+      if (this.opSets.has(afterKey)) {
+        return this.opSets.get(afterKey);
+      }
+      if (this.opSets.has(beforeKey)) {
+        return this.opSets.get(beforeKey);
+      }
+    }
+    
+    return new Set();
+  }
+
+  /**
+   * Apply operation using Algorithm 1 from paper
+   * @param {string} operation - 'addMark' or 'removeMark'
+   * @param {Object} params - Operation parameters
+   */
+  applyPeritextOperation(operation, params) {
+    if (operation === 'addMark') {
+      const {start, end, markType, attributes, markConfig} = params;
+      
+      // Update op-set at start position
+      const startKey = `${start.opId}:${start.type}`;
+      if (!this.opSets.has(startKey)) {
+        const prevOpSet = this.findPreviousOpSet(startKey);
+        this.opSets.set(startKey, new Set(prevOpSet));
+      }
+      
+      // Process span between start and end
+      const sequence = this.getOrderedSequence();
+      const startChar = sequence.find(n => n.opId === start.opId);
+      const endChar = sequence.find(n => n.opId === end.opId);
+      
+      if (startChar && endChar) {
+        const startIndex = sequence.indexOf(startChar);
+        const endIndex = sequence.indexOf(endChar);
+        
+        // Update all positions within the span
+        for (let i = startIndex; i <= endIndex; i++) {
+          const char = sequence[i];
+          const beforeKey = `${char.opId}:before`;
+          const afterKey = `${char.opId}:after`;
+          
+          [beforeKey, afterKey].forEach(key => {
+            if (!this.opSets.has(key)) {
+              this.opSets.set(key, new Set());
+            }
+            
+            const opSet = this.opSets.get(key);
+            opSet.add({
+              type: 'addMark',
+              markId: params.markId || this.generateMarkId(),
+              markType,
+              timestamp: Date.now(),
+              userId: this.userId,
+              counter: ++this.markCounter
+            });
+          });
+        }
+      }
+    }
   }
 
   /**
@@ -83,9 +202,20 @@ class RGADocument {
       counter: this.counter
     };
 
-    // Insert into the sequence using RGA algorithm
-    this.insertIntoSequence(newNode, leftNode);
+    // For local operations, insert directly at specified position  
+    // without RGA ordering (which is only for concurrent remote ops)
+    newNode.rightId = leftNode.rightId;
+    if (leftNode.rightId) {
+      const rightNode = this.characters.get(leftNode.rightId);
+      rightNode.leftId = newNode.opId;
+    }
+    leftNode.rightId = newNode.opId;
+    newNode.leftId = leftNode.opId;
+    
     this.characters.set(opId, newNode);
+    
+    // Handle mark expansion according to Section 3.3
+    this.handleMarkExpansionOnInsertion(opId, leftOpId);
     
     return opId;
   }
@@ -139,6 +269,112 @@ class RGADocument {
   }
 
   /**
+   * Handle mark expansion when text is inserted (Section 3.3)
+   * @param {string} newOpId - OpId of newly inserted character
+   * @param {string} leftOpId - OpId of character to the left
+   */
+  handleMarkExpansionOnInsertion(newOpId, leftOpId) {
+    const sequence = this.getOrderedSequence();
+    const leftIndex = sequence.findIndex(n => n.opId === leftOpId);
+    const rightIndex = leftIndex + 1;
+    
+    if (leftIndex === -1) return;
+    
+    // Find marks that might need to expand
+    for (const mark of this.marks.values()) {
+      if (mark.deleted || !mark.expand) continue;
+      
+      const startChar = sequence.find(n => n.opId === mark.start.opId);
+      const endChar = sequence.find(n => n.opId === mark.end.opId);
+      
+      if (!startChar || !endChar) continue;
+      
+      const startIndex = sequence.indexOf(startChar);
+      const endIndex = sequence.indexOf(endChar);
+      
+      // Apply intent preservation rules from Section 3.3:
+      
+      // Rule 1: If inserting within a mark span, inherit formatting
+      if (this.isInsertionWithinMark(leftIndex, rightIndex, startIndex, endIndex, mark)) {
+        // Character inherits the mark - mark automatically covers it
+        continue;
+      }
+      
+      // Rule 2: If inserting at mark boundaries, check expansion rules
+      if (this.isInsertionAtMarkBoundary(leftIndex, startIndex, endIndex, mark)) {
+        this.expandMarkForInsertion(mark, newOpId, leftIndex, startIndex, endIndex);
+      }
+    }
+  }
+
+  /**
+   * Check if insertion is within a mark span
+   * @param {number} leftIndex - Index of left character
+   * @param {number} rightIndex - Index of right character  
+   * @param {number} startIndex - Mark start index
+   * @param {number} endIndex - Mark end index
+   * @param {Object} mark - Mark object
+   * @returns {boolean}
+   */
+  isInsertionWithinMark(leftIndex, rightIndex, startIndex, endIndex, mark) {
+    let actualStart = startIndex;
+    let actualEnd = endIndex;
+    
+    if (mark.start.type === 'after') actualStart++;
+    if (mark.end.type === 'before') actualEnd--;
+    
+    // Insertion is within if it's between the actual boundaries
+    return leftIndex >= actualStart && leftIndex < actualEnd;
+  }
+
+  /**
+   * Check if insertion is at mark boundary
+   * @param {number} leftIndex - Index of left character
+   * @param {number} startIndex - Mark start index
+   * @param {number} endIndex - Mark end index
+   * @param {Object} mark - Mark object
+   * @returns {boolean}
+   */
+  isInsertionAtMarkBoundary(leftIndex, startIndex, endIndex, mark) {
+    // Check if inserting at the start or end boundary
+    if (mark.start.type === 'before' && leftIndex === startIndex - 1) return true;
+    if (mark.start.type === 'after' && leftIndex === startIndex) return true;
+    if (mark.end.type === 'before' && leftIndex === endIndex - 1) return true;
+    if (mark.end.type === 'after' && leftIndex === endIndex) return true;
+    
+    return false;
+  }
+
+  /**
+   * Expand mark to include inserted character
+   * @param {Object} mark - Mark to expand
+   * @param {string} newOpId - OpId of inserted character
+   * @param {number} leftIndex - Index where insertion occurred
+   * @param {number} startIndex - Current mark start index
+   * @param {number} endIndex - Current mark end index
+   */
+  expandMarkForInsertion(mark, newOpId, leftIndex, startIndex, endIndex) {
+    const sequence = this.getOrderedSequence();
+    
+    // Expand mark boundaries based on insertion position
+    if (leftIndex === startIndex - 1 && mark.start.type === 'before') {
+      // Inserted before mark start - extend start boundary
+      mark.start = { opId: newOpId, type: 'before' };
+    } else if (leftIndex === startIndex && mark.start.type === 'after') {
+      // Inserted after mark start character - no change needed
+    } else if (leftIndex === endIndex - 1 && mark.end.type === 'before') {
+      // Inserted before mark end - no change needed
+    } else if (leftIndex === endIndex && mark.end.type === 'after') {
+      // Inserted after mark end - extend end boundary
+      mark.end = { opId: newOpId, type: 'after' };
+    }
+    
+    // Update op-sets
+    this.updateOpSetAtAnchor(mark.start, 'addMark', mark);
+    this.updateOpSetAtAnchor(mark.end, 'addMark', mark);
+  }
+
+  /**
    * Mark character as deleted (tombstone approach)
    * @param {string} opId - OpId of character to delete
    */
@@ -167,6 +403,134 @@ class RGADocument {
       return `removeMark-${operation.markId}-${operation.timestamp}-${operation.userId}`;
     }
     return `${operation.action}-${operation.timestamp}-${operation.userId}`;
+  }
+
+  /**
+   * Validate operation before applying (Section 4.1)
+   * @param {Object} operation - Operation to validate
+   * @returns {boolean} - Whether operation is valid
+   */
+  validateOperation(operation) {
+    if (!operation || !operation.action) return false;
+    
+    switch (operation.action) {
+      case 'insert':
+        return operation.opId && operation.char !== undefined && operation.leftId !== undefined;
+      case 'delete':
+        return operation.targetId && this.characters.has(operation.targetId);
+      case 'addMark':
+        return operation.markId && operation.start && operation.end && operation.markType &&
+               this.characters.has(operation.start.opId) && this.characters.has(operation.end.opId);
+      case 'removeMark':
+        return operation.markId && this.marks.has(operation.markId);
+      default:
+        return false;
+    }
+  }
+
+  /**
+   * Convert current document to operations log for synchronization
+   * @returns {Array} - Array of all operations that created current state
+   */
+  getOperationsLog() {
+    const operations = [];
+    
+    // Add character insertion operations
+    const sequence = this.getOrderedSequence();
+    for (const node of sequence) {
+      if (node.opId !== this.root.opId) {
+        operations.push({
+          action: 'insert',
+          opId: node.opId,
+          char: node.char,
+          leftId: node.leftId,
+          timestamp: node.timestamp,
+          userId: node.userId,
+          counter: node.counter
+        });
+        
+        if (node.deleted) {
+          operations.push({
+            action: 'delete',
+            targetId: node.opId,
+            timestamp: node.timestamp,
+            userId: node.userId
+          });
+        }
+      }
+    }
+    
+    // Add mark operations
+    for (const mark of this.marks.values()) {
+      operations.push({
+        action: 'addMark',
+        markId: mark.markId,
+        start: mark.start,
+        end: mark.end,
+        markType: mark.markType,
+        attributes: mark.attributes,
+        canOverlap: mark.canOverlap,
+        expand: mark.expand,
+        timestamp: mark.timestamp,
+        userId: mark.userId,
+        counter: mark.counter
+      });
+      
+      if (mark.deleted) {
+        operations.push({
+          action: 'removeMark',
+          markId: mark.markId,
+          timestamp: mark.timestamp,
+          userId: mark.userId
+        });
+      }
+    }
+    
+    // Sort by timestamp, then userId, then counter for deterministic ordering
+    return operations.sort((a, b) => {
+      if (a.timestamp !== b.timestamp) return a.timestamp - b.timestamp;
+      if (a.userId !== b.userId) return a.userId.localeCompare(b.userId);
+      return (a.counter || 0) - (b.counter || 0);
+    });
+  }
+
+  /**
+   * Merge with another Peritext document
+   * @param {PeritextDocument} other - Other document to merge with
+   * @returns {boolean} - Whether merge was successful
+   */
+  merge(other) {
+    try {
+      const otherOperations = other.getOperationsLog();
+      let appliedCount = 0;
+      
+      for (const operation of otherOperations) {
+        if (this.applyOperation(operation)) {
+          appliedCount++;
+        }
+      }
+      
+      return appliedCount > 0;
+    } catch (error) {
+      console.error('Merge failed:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Create a fork of this document for branching workflows
+   * @param {string} newUserId - User ID for the fork
+   * @returns {PeritextDocument} - Forked document
+   */
+  fork(newUserId) {
+    const forked = new PeritextDocument(newUserId);
+    const operations = this.getOperationsLog();
+    
+    for (const operation of operations) {
+      forked.applyOperation(operation);
+    }
+    
+    return forked;
   }
 
   /**
@@ -244,8 +608,64 @@ class RGADocument {
       counter: op.counter
     };
 
-    this.insertIntoSequence(newNode, leftNode);
+    // For sequential operations from same user, insert directly at specified position
+    // For concurrent operations from different users, use RGA ordering
+    const isSequentialFromSameUser = this.isSequentialOperation(newNode, leftNode);
+    
+    if (isSequentialFromSameUser) {
+      // Direct insertion preserving user intent
+      newNode.rightId = leftNode.rightId;
+      if (leftNode.rightId) {
+        const rightNode = this.characters.get(leftNode.rightId);
+        rightNode.leftId = newNode.opId;
+      }
+      leftNode.rightId = newNode.opId;
+      newNode.leftId = leftNode.opId;
+    } else {
+      // Use RGA ordering for concurrent operations
+      this.insertIntoSequence(newNode, leftNode);
+    }
+    
     this.characters.set(op.opId, newNode);
+  }
+
+  /**
+   * Check if this is a sequential operation from the same user
+   * Sequential operations should preserve insertion order, concurrent ones use RGA ordering
+   */
+  isSequentialOperation(newNode, leftNode) {
+    // If inserting from a different user than the document owner, always use RGA
+    if (newNode.userId === this.userId) {
+      return false; // Local operations should never reach this method
+    }
+    
+    // For remote operations: check if this appears to be part of a sequential typing session
+    // Look at the immediate right neighbor to see if there's a pattern
+    
+    // If the leftNode is from the same user and this is the immediate next counter,
+    // treat as sequential
+    if (leftNode.userId === newNode.userId && 
+        leftNode.counter === newNode.counter - 1) {
+      return true;
+    }
+    
+    // If no immediate right neighbor or right neighbor is from different user/time,
+    // treat as sequential (preserving user intent)
+    if (!leftNode.rightId) {
+      return true; // Appending to end
+    }
+    
+    const rightNode = this.characters.get(leftNode.rightId);
+    if (!rightNode) return true;
+    
+    // If right node is from different user or much later timestamp, treat as sequential
+    if (rightNode.userId !== newNode.userId || 
+        Math.abs(rightNode.timestamp - newNode.timestamp) > 1000) { // 1 second threshold
+      return true;
+    }
+    
+    // Otherwise, use RGA ordering for concurrent operations
+    return false;
   }
 
   /**
@@ -257,33 +677,41 @@ class RGADocument {
 
   /**
    * Add formatting mark (Peritext operation)
-   * @param {string} startOpId - OpId of character where mark starts
-   * @param {string} endOpId - OpId of character where mark ends  
+   * Implements anchor positions as described in Section 4.2
+   * @param {Object} start - {opId: string, type: 'before'|'after'}
+   * @param {Object} end - {opId: string, type: 'before'|'after'}
    * @param {string} markType - Type of mark (bold, italic, etc.)
    * @param {Object} attributes - Mark attributes
+   * @param {Object} markConfig - {canOverlap: boolean, expand: boolean}
    * @returns {string} - Mark ID
    */
-  addMark(startOpId, endOpId, markType, attributes = {}) {
+  addMark(start, end, markType, attributes = {}, markConfig = {canOverlap: true, expand: true}) {
     const markId = this.generateMarkId();
     
     // Validate anchor positions exist
-    if (!this.characters.has(startOpId) || !this.characters.has(endOpId)) {
-      throw new Error(`Invalid anchor positions: ${startOpId} or ${endOpId} not found`);
+    if (!this.characters.has(start.opId) || !this.characters.has(end.opId)) {
+      throw new Error(`Invalid anchor positions: ${start.opId} or ${end.opId} not found`);
     }
     
     const mark = {
       markId,
-      startOpId,
-      endOpId,
+      start, // {opId, type: 'before'|'after'}
+      end,   // {opId, type: 'before'|'after'}
       markType,
       attributes,
+      canOverlap: markConfig.canOverlap,
+      expand: markConfig.expand,
       deleted: false,
       timestamp: Date.now(),
-      userId: this.userId
+      userId: this.userId,
+      counter: ++this.markCounter
     };
     
     this.marks.set(markId, mark);
-    console.log('Added mark:', mark);
+    
+    // Update op-sets at anchor positions (Algorithm 1)
+    this.updateOpSetAtAnchor(start, 'addMark', mark);
+    this.updateOpSetAtAnchor(end, 'addMark', mark);
     
     return markId;
   }
@@ -311,25 +739,67 @@ class RGADocument {
       return; // Already applied
     }
     
-    // Ensure anchor positions exist
-    if (!this.characters.has(op.startOpId) || !this.characters.has(op.endOpId)) {
-      console.warn(`Missing anchors for mark ${op.markId}: ${op.startOpId} or ${op.endOpId}`);
+    // Handle position-based marks (new format)
+    if (op.startIndex !== undefined && op.endIndex !== undefined) {
+      // Resolve position indices to local opIds
+      const startOpId = this.getOpIdAtIndex(op.startIndex);
+      const endOpId = this.getOpIdAtIndex(op.endIndex);
+      
+      if (!startOpId || !endOpId) {
+        console.warn(`Cannot resolve position indices for mark ${op.markId}: ${op.startIndex}-${op.endIndex}`);
+        return;
+      }
+      
+      const mark = {
+        markId: op.markId,
+        start: { opId: startOpId, type: 'before' },
+        end: { opId: endOpId, type: 'after' },
+        markType: op.markType,
+        attributes: op.attributes || {},
+        canOverlap: op.canOverlap !== undefined ? op.canOverlap : true,
+        expand: op.expand !== undefined ? op.expand : true,
+        deleted: false,
+        timestamp: op.timestamp,
+        userId: op.userId,
+        counter: op.counter
+      };
+      
+      this.marks.set(op.markId, mark);
+      
+      // Update op-sets at anchor positions
+      this.updateOpSetAtAnchor(mark.start, 'addMark', mark);
+      this.updateOpSetAtAnchor(mark.end, 'addMark', mark);
+      
+    } else if (op.start && op.end) {
+      // Handle old opId-based format (for backwards compatibility)
+      if (!this.characters.has(op.start.opId) || !this.characters.has(op.end.opId)) {
+        console.warn(`Missing anchors for mark ${op.markId}: ${op.start.opId} or ${op.end.opId}`);
+        return;
+      }
+      
+      const mark = {
+        markId: op.markId,
+        start: op.start,
+        end: op.end,
+        markType: op.markType,
+        attributes: op.attributes || {},
+        canOverlap: op.canOverlap !== undefined ? op.canOverlap : true,
+        expand: op.expand !== undefined ? op.expand : true,
+        deleted: false,
+        timestamp: op.timestamp,
+        userId: op.userId,
+        counter: op.counter
+      };
+      
+      this.marks.set(op.markId, mark);
+      
+      // Update op-sets at anchor positions
+      this.updateOpSetAtAnchor(op.start, 'addMark', mark);
+      this.updateOpSetAtAnchor(op.end, 'addMark', mark);
+    } else {
+      console.warn(`Invalid mark operation format for ${op.markId}`);
       return;
     }
-    
-    const mark = {
-      markId: op.markId,
-      startOpId: op.startOpId,
-      endOpId: op.endOpId,
-      markType: op.markType,
-      attributes: op.attributes || {},
-      deleted: false,
-      timestamp: op.timestamp,
-      userId: op.userId
-    };
-    
-    this.marks.set(op.markId, mark);
-    console.log('Applied remote mark:', mark);
   }
 
   /**
@@ -338,6 +808,77 @@ class RGADocument {
    */
   applyRemoteMarkRemoval(op) {
     this.removeMark(op.markId);
+  }
+
+  /**
+   * Check if two marks can overlap (based on Table 1)
+   * @param {Object} mark1 - First mark
+   * @param {Object} mark2 - Second mark
+   * @returns {boolean} - Whether marks can overlap
+   */
+  canMarksOverlap(mark1, mark2) {
+    // Same mark type overlap rules
+    if (mark1.markType === mark2.markType) {
+      switch (mark1.markType) {
+        case 'bold':
+        case 'italic':
+        case 'underline':
+          return false; // Boolean marks don't overlap meaningfully
+        case 'color':
+        case 'backgroundColor':
+          return false; // Color conflicts need resolution
+        case 'comment':
+          return true;  // Comments can overlap
+        default:
+          return mark1.canOverlap && mark2.canOverlap;
+      }
+    }
+    
+    // Different mark types can generally overlap
+    return mark1.canOverlap && mark2.canOverlap;
+  }
+
+  /**
+   * Compress document by removing tombstones and optimizing marks
+   * This is an optimization not in the paper but useful for performance
+   * @returns {number} - Number of items removed
+   */
+  compress() {
+    let removed = 0;
+    
+    // Remove tombstones that are no longer needed
+    // (This is safe only if we're sure no more operations reference them)
+    const sequence = this.getOrderedSequence();
+    const referencedIds = new Set();
+    
+    // Find all referenced character IDs
+    for (const node of sequence) {
+      if (node.leftId) referencedIds.add(node.leftId);
+      if (node.rightId) referencedIds.add(node.rightId);
+    }
+    
+    for (const mark of this.marks.values()) {
+      referencedIds.add(mark.start.opId);
+      referencedIds.add(mark.end.opId);
+    }
+    
+    // Remove unreferenced tombstones
+    for (const [opId, node] of this.characters.entries()) {
+      if (node.deleted && !referencedIds.has(opId) && opId !== this.root.opId) {
+        this.characters.delete(opId);
+        removed++;
+      }
+    }
+    
+    // Remove deleted marks
+    for (const [markId, mark] of this.marks.entries()) {
+      if (mark.deleted) {
+        this.marks.delete(markId);
+        removed++;
+      }
+    }
+    
+    return removed;
   }
 
   /**
@@ -398,6 +939,33 @@ class RGADocument {
   }
 
   /**
+   * Get the leftOpId for insertion at a cursor position
+   * Cursor positions are BETWEEN characters, not AT characters
+   * @param {number} cursorIndex - Cursor position (0 = before first char, 1 = after first char, etc.)
+   * @returns {string|null} - OpId of character to insert after (null for root)
+   */
+  getLeftOpIdForCursor(cursorIndex) {
+    const positions = this.getVisiblePositions();
+    
+    // Cursor at position 0 means insert at the beginning (after root)
+    if (cursorIndex === 0) {
+      return this.root.opId;
+    }
+    
+    // Cursor at position N means insert after the (N-1)th visible character
+    const leftCharIndex = cursorIndex - 1;
+    const leftChar = positions[leftCharIndex];
+    
+    if (!leftChar) {
+      // Cursor is beyond the end of the document - insert after last character
+      const lastChar = positions[positions.length - 1];
+      return lastChar ? lastChar.opId : this.root.opId;
+    }
+    
+    return leftChar.opId;
+  }
+
+  /**
    * Find text index of given opId
    * @param {string} opId - Operation ID
    * @returns {number} - Text index (-1 if not found or deleted)
@@ -409,7 +977,22 @@ class RGADocument {
   }
 
   /**
+   * Get cursor position after a given opId
+   * @param {string} opId - Operation ID
+   * @returns {number} - Cursor position (0 = before first char, 1 = after first char, etc.)
+   */
+  getCursorAfterOpId(opId) {
+    if (opId === this.root.opId) {
+      return 0; // Cursor at beginning
+    }
+    
+    const charIndex = this.getIndexOfOpId(opId);
+    return charIndex >= 0 ? charIndex + 1 : 0;
+  }
+
+  /**
    * Get marks that apply to a specific character position
+   * Uses anchor position system to determine mark coverage
    * @param {string} opId - Character operation ID
    * @returns {Array} - Array of marks that apply to this character
    */
@@ -420,16 +1003,31 @@ class RGADocument {
     
     if (characterIndex === -1) return activeMarks;
     
-    // Check all marks to see which ones span this character
+    // Check all marks to see which ones span this character using anchor positions
     for (const mark of this.marks.values()) {
       if (mark.deleted) continue;
       
-      const startIndex = sequence.findIndex(node => node.opId === mark.startOpId);
-      const endIndex = sequence.findIndex(node => node.opId === mark.endOpId);
+      const startChar = sequence.find(node => node.opId === mark.start.opId);
+      const endChar = sequence.find(node => node.opId === mark.end.opId);
       
-      // Mark applies if character is within the span (inclusive start, inclusive end)
-      if (startIndex !== -1 && endIndex !== -1 && 
-          characterIndex >= startIndex && characterIndex <= endIndex) {
+      if (!startChar || !endChar) continue;
+      
+      const startIndex = sequence.indexOf(startChar);
+      const endIndex = sequence.indexOf(endChar);
+      
+      // Determine actual span boundaries based on anchor types
+      let actualStart = startIndex;
+      let actualEnd = endIndex;
+      
+      if (mark.start.type === 'after') {
+        actualStart = startIndex + 1;
+      }
+      if (mark.end.type === 'before') {
+        actualEnd = endIndex - 1;
+      }
+      
+      // Mark applies if character is within the actual span
+      if (characterIndex >= actualStart && characterIndex <= actualEnd) {
         activeMarks.push(mark);
       }
     }
@@ -500,7 +1098,7 @@ class RGADocument {
 
   /**
    * Generate operation object for broadcasting
-   * @param {string} action - 'insert' or 'delete'
+   * @param {string} action - 'insert', 'delete', 'addMark', 'removeMark'
    * @param {Object} params - Action-specific parameters
    * @returns {Object} - Operation object
    */
@@ -529,19 +1127,238 @@ class RGADocument {
         return {
           ...baseOp,
           markId: params.markId,
-          startOpId: params.startOpId,
-          endOpId: params.endOpId,
+          start: params.start, // {opId, type}
+          end: params.end,     // {opId, type}
           markType: params.markType,
-          attributes: params.attributes || {}
+          attributes: params.attributes || {},
+          canOverlap: params.canOverlap,
+          expand: params.expand,
+          counter: params.counter
         };
       case 'removeMark':
         return {
           ...baseOp,
-          markId: params.markId
+          markId: params.markId,
+          counter: params.counter
         };
       default:
         throw new Error(`Unknown action: ${action}`);
     }
+  }
+
+  /**
+   * Create incremental patches for efficient updates (Section 4.5)
+   * @param {Object} operation - Operation to create patch for
+   * @returns {Object} - Patch object
+   */
+  createIncrementalPatch(operation) {
+    switch (operation.action) {
+      case 'insert':
+        return this.createInsertPatch(operation);
+      case 'delete':
+        return this.createDeletePatch(operation);
+      case 'addMark':
+        return this.createAddMarkPatch(operation);
+      case 'removeMark':
+        return this.createRemoveMarkPatch(operation);
+      default:
+        throw new Error(`Unknown operation type: ${operation.action}`);
+    }
+  }
+
+  /**
+   * Create insert patch
+   * @param {Object} operation - Insert operation
+   * @returns {Object} - Insert patch
+   */
+  createInsertPatch(operation) {
+    const sequence = this.getOrderedSequence();
+    const leftNode = this.characters.get(operation.leftId);
+    const insertedNode = this.characters.get(operation.opId);
+    
+    // Find insertion index in visible text
+    let index = 0;
+    for (const node of sequence) {
+      if (node.opId === operation.leftId) {
+        break;
+      }
+      if (!node.deleted && node.char !== null) {
+        index++;
+      }
+    }
+    
+    // Get formatting for inserted character
+    const marks = this.getMarksForCharacter(operation.opId);
+    const format = this.resolveMarkConflicts(marks);
+    
+    return {
+      type: 'insert',
+      index,
+      char: operation.char,
+      format,
+      opId: operation.opId
+    };
+  }
+
+  /**
+   * Create delete patch
+   * @param {Object} operation - Delete operation
+   * @returns {Object} - Delete patch
+   */
+  createDeletePatch(operation) {
+    const sequence = this.getOrderedSequence();
+    
+    // Find index of deleted character in visible text
+    let index = 0;
+    for (const node of sequence) {
+      if (node.opId === operation.targetId) {
+        break;
+      }
+      if (!node.deleted && node.char !== null) {
+        index++;
+      }
+    }
+    
+    return {
+      type: 'delete',
+      index,
+      length: 1,
+      opId: operation.targetId
+    };
+  }
+
+  /**
+   * Create add mark patch
+   * @param {Object} operation - Add mark operation
+   * @returns {Object} - Add mark patch
+   */
+  createAddMarkPatch(operation) {
+    const sequence = this.getOrderedSequence();
+    const startChar = sequence.find(n => n.opId === operation.start.opId);
+    const endChar = sequence.find(n => n.opId === operation.end.opId);
+    
+    if (!startChar || !endChar) {
+      return null; // Skip if characters not found
+    }
+    
+    const startIndex = sequence.indexOf(startChar);
+    const endIndex = sequence.indexOf(endChar);
+    
+    // Calculate actual span boundaries
+    let actualStart = startIndex;
+    let actualEnd = endIndex;
+    
+    if (operation.start.type === 'after') actualStart++;
+    if (operation.end.type === 'before') actualEnd--;
+    
+    // Convert to visible character indices
+    let visibleStart = 0;
+    let visibleEnd = 0;
+    let currentVisible = 0;
+    
+    for (let i = 0; i < sequence.length; i++) {
+      const node = sequence[i];
+      
+      if (i === actualStart) {
+        visibleStart = currentVisible;
+      }
+      if (i === actualEnd) {
+        visibleEnd = currentVisible;
+      }
+      
+      if (!node.deleted && node.char !== null) {
+        currentVisible++;
+      }
+    }
+    
+    return {
+      type: 'format',
+      index: visibleStart,
+      length: Math.max(1, visibleEnd - visibleStart),
+      format: {
+        [operation.markType]: this.getMarkValue(operation.markType, {
+          markType: operation.markType,
+          attributes: operation.attributes
+        })
+      },
+      markId: operation.markId
+    };
+  }
+
+  /**
+   * Create remove mark patch
+   * @param {Object} operation - Remove mark operation
+   * @returns {Object} - Remove mark patch
+   */
+  createRemoveMarkPatch(operation) {
+    const mark = this.marks.get(operation.markId);
+    if (!mark) return null;
+    
+    // Similar to addMarkPatch but removes formatting
+    const addPatch = this.createAddMarkPatch({
+      ...operation,
+      start: mark.start,
+      end: mark.end,
+      markType: mark.markType,
+      attributes: mark.attributes
+    });
+    
+    if (addPatch) {
+      return {
+        ...addPatch,
+        type: 'unformat',
+        format: {
+          [mark.markType]: null
+        }
+      };
+    }
+    
+    return null;
+  }
+
+  /**
+   * Apply incremental patch to text editor
+   * @param {Object} patch - Patch to apply
+   * @param {Object} editor - Text editor instance (e.g., Quill)
+   */
+  applyPatchToEditor(patch, editor) {
+    switch (patch.type) {
+      case 'insert':
+        editor.insertText(patch.index, patch.char, patch.format);
+        break;
+      case 'delete':
+        editor.deleteText(patch.index, patch.length);
+        break;
+      case 'format':
+        editor.formatText(patch.index, patch.length, patch.format);
+        break;
+      case 'unformat':
+        editor.removeFormat(patch.index, patch.length, Object.keys(patch.format));
+        break;
+    }
+  }
+
+  /**
+   * Get current document state suitable for text editor initialization
+   * @returns {Object} - Document state with content and formatting
+   */
+  getDocumentState() {
+    const formattedContent = this.getFormattedContent();
+    const sequence = this.getOrderedSequence();
+    const visibleChars = sequence.filter(n => !n.deleted && n.char !== null);
+    
+    return {
+      content: formattedContent,
+      text: this.getText(),
+      length: visibleChars.length,
+      marks: Array.from(this.marks.values()).filter(m => !m.deleted),
+      version: {
+        userId: this.userId,
+        counter: this.counter,
+        markCounter: this.markCounter,
+        timestamp: Date.now()
+      }
+    };
   }
 
   /**
@@ -551,15 +1368,30 @@ class RGADocument {
     return {
       userId: this.userId,
       counter: this.counter,
+      markCounter: this.markCounter,
       characterCount: this.characters.size,
+      markCount: this.marks.size,
       text: this.getText(),
       sequence: this.getOrderedSequence().map(n => ({
         opId: n.opId,
         char: n.char,
         deleted: n.deleted
-      }))
+      })),
+      marks: Array.from(this.marks.values()).map(m => ({
+        markId: m.markId,
+        markType: m.markType,
+        start: m.start,
+        end: m.end,
+        deleted: m.deleted
+      })),
+      opSets: Object.fromEntries(
+        Array.from(this.opSets.entries()).map(([key, set]) => [
+          key,
+          Array.from(set)
+        ])
+      )
     };
   }
 }
 
-export default RGADocument;
+export default PeritextDocument;
