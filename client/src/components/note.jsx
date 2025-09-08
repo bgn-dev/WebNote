@@ -5,7 +5,7 @@ import { showToast } from './common/toast';
 import { isValidEmail } from '../utils/validation';
 
 import { firestore } from '../firebase/config';
-import { updateDoc, getDoc, doc, onSnapshot, arrayUnion } from "@firebase/firestore"
+import { updateDoc, getDoc, doc, onSnapshot, arrayUnion, setDoc } from "@firebase/firestore"
 
 import socketio from "socket.io-client";
 
@@ -21,7 +21,7 @@ import './quill-custom.css';
 
 import WebRTCManager from './webrtc/webrtc-manager';
 import { useAuth } from '../firebase/auth';
-import PeritextDocument from './crdt/rga-document';
+import PeritextDocument from './crdt/peritext-document';
 
 
 export default function NoteApp() {
@@ -35,7 +35,6 @@ export default function NoteApp() {
   const [rgaDoc, setRgaDoc] = useState(null);
   const isApplyingRemoteChange = useRef(false);
   const lastAppliedText = useRef(""); // Track last text applied to prevent loops
-  const operationQueue = useRef([]); // Queue operations during editor updates
   const [inputToken, setInputToken] = useState("");
   const [showInvitePopup, setShowInvitePopup] = useState(false);
 
@@ -51,6 +50,9 @@ export default function NoteApp() {
   const socketRef = useRef(null);
   const webrtcManager = useRef(null);
   const joinTimeoutRef = useRef(null);
+  const saveTimeoutRef = useRef(null);
+  const lastSavedState = useRef(null);
+  const [saveStatus, setSaveStatus] = useState('saved'); // 'saved', 'saving', 'unsaved'
 
   // Initialize RGA document when user is available
   useEffect(() => {
@@ -81,24 +83,6 @@ export default function NoteApp() {
       console.log('Initialized Quill editor with CRDT content:', `"${lastAppliedText.current}"`);
     }
   }, [rgaDoc]);
-
-  // Helper function to find insertion position in text diff
-  const findInsertPosition = (oldText, newText) => {
-    let i = 0;
-    while (i < oldText.length && i < newText.length && oldText[i] === newText[i]) {
-      i++;
-    }
-    return i;
-  };
-
-  // Helper function to find deletion position in text diff
-  const findDeletePosition = (oldText, newText) => {
-    let i = 0;
-    while (i < oldText.length && i < newText.length && oldText[i] === newText[i]) {
-      i++;
-    }
-    return i;
-  };
 
   // Generate formatting operations from Quill delta
   const generateFormattingOperations = (delta, rgaDocument) => {
@@ -256,65 +240,6 @@ export default function NoteApp() {
     }
     
     return operations;
-  };
-
-  // Proper text diff algorithm (simplified implementation)
-  const computeTextDiff = (oldText, newText) => {
-    const changes = [];
-    
-    // Simple implementation - find single change point
-    let i = 0;
-    while (i < oldText.length && i < newText.length && oldText[i] === newText[i]) {
-      i++;
-    }
-    
-    if (i === oldText.length && i === newText.length) {
-      return changes; // No changes
-    }
-    
-    if (newText.length > oldText.length) {
-      // Insertion
-      const insertedText = newText.slice(i, i + (newText.length - oldText.length));
-      changes.push({
-        type: 'insert',
-        index: i,
-        text: insertedText
-      });
-    } else if (newText.length < oldText.length) {
-      // Deletion
-      const deletedCount = oldText.length - newText.length;
-      changes.push({
-        type: 'delete',
-        index: i,
-        count: deletedCount
-      });
-    } else {
-      // Replacement (delete then insert)
-      let j = oldText.length - 1;
-      let k = newText.length - 1;
-      while (j >= i && k >= i && oldText[j] === newText[k]) {
-        j--;
-        k--;
-      }
-      
-      if (j >= i) {
-        changes.push({
-          type: 'delete',
-          index: i,
-          count: j - i + 1
-        });
-      }
-      
-      if (k >= i) {
-        changes.push({
-          type: 'insert',
-          index: i,
-          text: newText.slice(i, k + 1)
-        });
-      }
-    }
-    
-    return changes;
   };
 
   // Memoized callbacks to prevent recreating WebRTC manager
@@ -487,9 +412,12 @@ export default function NoteApp() {
     return () => {
       console.log('CallScreen component unmounting, cleaning up');
 
-      // Clear timeout
+      // Clear timeouts
       if (joinTimeoutRef.current) {
         clearTimeout(joinTimeoutRef.current);
+      }
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
       }
 
       // Cleanup WebRTC manager
@@ -558,46 +486,199 @@ export default function NoteApp() {
     }
   };
 
-  // Load initial document content and setup Firestore sync
+  // Auto-save document state to Firestore with debouncing
+  const saveDocumentState = useCallback(async (rgaDocument) => {
+    if (!rgaDocument || !noteID) {
+      console.log('Cannot save - missing rgaDocument or noteID:', { rgaDocument: !!rgaDocument, noteID });
+      return;
+    }
+    
+    try {
+      setSaveStatus('saving');
+      
+      const serializedState = rgaDocument.serialize();
+      const currentStateHash = JSON.stringify(serializedState);
+      const plainText = rgaDocument.getText();
+      
+      console.log('Attempting to save document state:', {
+        noteID,
+        plainText,
+        serializedStateSize: JSON.stringify(serializedState).length,
+        charactersCount: rgaDocument.characters.size,
+        marksCount: rgaDocument.marks.size
+      });
+      
+      // Avoid saving if state hasn't changed
+      if (lastSavedState.current === currentStateHash) {
+        console.log('Skipping save - state unchanged');
+        setSaveStatus('saved');
+        return;
+      }
+      
+      const noteRef = doc(firestore, 'notes', noteID);
+      
+      // Use setDoc with merge to ensure document exists
+      await setDoc(noteRef, {
+        crdtState: serializedState,
+        note: plainText, // Keep for backwards compatibility
+        lastModified: Date.now(),
+        lastModifiedBy: user?.email || 'anonymous',
+        title: noteTitle || 'Untitled Note'
+      }, { merge: true });
+      
+      lastSavedState.current = currentStateHash;
+      setSaveStatus('saved');
+      console.log('Document state saved to Firestore successfully:', {
+        plainText,
+        crdtStateSize: JSON.stringify(serializedState).length
+      });
+      
+    } catch (error) {
+      console.error('Error saving document state:', error);
+      setSaveStatus('unsaved');
+    }
+  }, [noteID, user?.email, noteTitle]);
+
+  // Debounced auto-save function
+  const debouncedSave = useCallback((rgaDocument) => {
+    setSaveStatus('unsaved');
+    
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    
+    saveTimeoutRef.current = setTimeout(() => {
+      saveDocumentState(rgaDocument);
+    }, 2000); // Save after 2 seconds of inactivity
+  }, [saveDocumentState]);
+
+  // Track if we've loaded initial state for this session
+  const hasLoadedInitialState = useRef(false);
+
+  // Load document state from Firestore and setup real-time sync
   useEffect(() => {
-    if (!rgaDoc) return;
+    if (!rgaDoc || !noteID) return;
+    
+    // Reset loading flag when component mounts or document changes
+    hasLoadedInitialState.current = false;
     
     const noteRef = doc(firestore, 'notes', noteID);
-    const unsubscribe = onSnapshot(noteRef, (docSnapshot) => {
+    
+    const unsubscribe = onSnapshot(noteRef, async (docSnapshot) => {
+      console.log('Firestore snapshot received:', {
+        exists: docSnapshot.exists(),
+        hasLoadedInitialState: hasLoadedInitialState.current,
+        noteID
+      });
+      
       if (docSnapshot.exists()) {
         const data = docSnapshot.data();
-        
-        // Only initialize RGA document once with existing content
-        const currentRGAText = rgaDoc.getText();
-        if (!currentRGAText && data.note) {
-          console.log('Loading initial document content into CRDT');
-          // Insert initial content into RGA document
-          for (let i = 0; i < data.note.length; i++) {
-            const char = data.note[i];
-            // Use cursor positioning for character-by-character insertion
-            const leftOpId = rgaDoc.getLeftOpIdForCursor(i);
-            rgaDoc.insert(char, leftOpId);
-          }
-          
-          // Update editor with initial content
-          if (quillRef.current) {
-            isApplyingRemoteChange.current = true;
-            quillRef.current.getEditor().setText(data.note, 'silent');
-            lastAppliedText.current = data.note;
-            isApplyingRemoteChange.current = false;
-          }
-        }
+        console.log('Firestore document data:', {
+          title: data.title,
+          hasCrdtState: !!data.crdtState,
+          hasNote: !!data.note,
+          plainTextLength: data.note?.length || 0,
+          lastModified: data.lastModified
+        });
         
         setNoteTitle(data.title);
+        
+        // Load initial CRDT state only once
+        if (!hasLoadedInitialState.current && data.crdtState) {
+          console.log('Loading persisted CRDT state...');
+          try {
+            // Deserialize the persisted CRDT state
+            const persistedDoc = PeritextDocument.deserialize(data.crdtState, user?.email);
+            console.log('Deserialized document:', {
+              charactersCount: persistedDoc.characters.size,
+              marksCount: persistedDoc.marks.size,
+              text: persistedDoc.getText()
+            });
+            
+            // Replace current document with loaded state instead of merging
+            rgaDoc.characters = persistedDoc.characters;
+            rgaDoc.marks = persistedDoc.marks;
+            rgaDoc.root = persistedDoc.root;
+            rgaDoc.counter = persistedDoc.counter;
+            rgaDoc.markCounter = persistedDoc.markCounter;
+            rgaDoc.appliedOperations = persistedDoc.appliedOperations;
+            rgaDoc.opSets = persistedDoc.opSets;
+            
+            console.log('Replaced current document with loaded state:', {
+              charactersCount: rgaDoc.characters.size,
+              marksCount: rgaDoc.marks.size,
+              text: rgaDoc.getText()
+            });
+            
+            // Update editor with loaded content
+            const loadedText = rgaDoc.getText();
+            if (loadedText && quillRef.current) {
+              isApplyingRemoteChange.current = true;
+              const editor = quillRef.current.getEditor();
+              editor.setText(loadedText, 'silent');
+              
+              // Apply formatting marks
+              const marks = Array.from(rgaDoc.marks.values()).filter(m => !m.deleted);
+              console.log(`Applying ${marks.length} formatting marks`);
+              marks.forEach(mark => {
+                const sequence = rgaDoc.getOrderedSequence();
+                const startIdx = sequence.findIndex(n => n.opId === mark.start.opId);
+                const endIdx = sequence.findIndex(n => n.opId === mark.end.opId);
+                
+                if (startIdx >= 0 && endIdx >= 0) {
+                  editor.formatText(startIdx, endIdx - startIdx + 1, mark.markType, mark.attributes[mark.markType]);
+                  console.log(`Applied ${mark.markType} from ${startIdx} to ${endIdx}`);
+                }
+              });
+              
+              lastAppliedText.current = loadedText;
+              isApplyingRemoteChange.current = false;
+            }
+            
+            hasLoadedInitialState.current = true;
+            console.log(`Successfully loaded CRDT state: "${rgaDoc.getText()}" with ${rgaDoc.marks.size} marks`);
+            
+          } catch (error) {
+            console.error('Error loading CRDT state:', error);
+            // Fallback to plain text if CRDT state is corrupted
+            if (data.note && !rgaDoc.getText()) {
+              console.log('Falling back to plain text loading');
+              loadLegacyPlainText(data.note);
+            }
+          }
+        } else if (!hasLoadedInitialState.current && data.note && !rgaDoc.getText()) {
+          // Fallback: Load legacy plain text format
+          console.log('Loading legacy plain text format:', data.note);
+          loadLegacyPlainText(data.note);
+          hasLoadedInitialState.current = true;
+        } else {
+          console.log('Skipping load - already loaded or no content');
+        }
       } else {
-        console.log('Document not found');
+        console.log('Document not found - will create new document on first edit');
       }
     });
+    
+    // Helper function to load legacy plain text (for backwards compatibility)
+    const loadLegacyPlainText = (plainText) => {
+      // Convert plain text to CRDT operations (without triggering WebRTC broadcast)
+      let leftOpId = rgaDoc.root.opId;
+      for (let i = 0; i < plainText.length; i++) {
+        leftOpId = rgaDoc.insert(plainText[i], leftOpId);
+      }
+      
+      if (quillRef.current) {
+        isApplyingRemoteChange.current = true;
+        quillRef.current.getEditor().setText(plainText, 'silent');
+        lastAppliedText.current = plainText;
+        isApplyingRemoteChange.current = false;
+      }
+    };
     
     return () => {
       unsubscribe();
     };
-  }, [rgaDoc]);
+  }, [rgaDoc, noteID, user?.email]);
 
 
   // Handle text content changes (ReactQuill onChange) - React optimized version
@@ -642,6 +723,14 @@ export default function NoteApp() {
           }));
         }
       });
+      
+      // Trigger auto-save after text changes
+      console.log('About to save CRDT state after text changes:', {
+        rgaDocExists: !!rgaDoc,
+        charactersSize: rgaDoc?.characters.size,
+        text: rgaDoc?.getText()
+      });
+      debouncedSave(rgaDoc);
     }
     
     // Process formatting changes from delta
@@ -659,15 +748,14 @@ export default function NoteApp() {
           }));
         }
       });
+      
+      // Trigger auto-save after formatting changes
+      if (formatOperations.length > 0) {
+        debouncedSave(rgaDoc);
+      }
     }
     
   }, [rgaDoc, user?.email]);
-
-  // Selection change handler - no longer needed for formatting (handled in onChange)
-  const handleSelectionChange = (range, source, editor) => {
-    // Just track selection for cursor position, formatting is handled in onChange
-    console.log('Selection changed:', range, source);
-  };
 
   const handleTitleChange = async (newNoteTitle) => {
     const noteRef = doc(firestore, 'notes', noteID);
@@ -705,6 +793,18 @@ export default function NoteApp() {
                 className="text-lg font-light text-slate-900 bg-transparent border-none outline-none placeholder-slate-400 flex-1 max-w-md tracking-tight"
               />
             </div>
+
+            {/* Save Status Indicator */}
+            <div className={`w-3 h-3 rounded-full transition-all duration-500 ${
+              saveStatus === 'saved' ? 'bg-green-500 shadow-green-500/30' :
+              saveStatus === 'saving' ? 'bg-yellow-500 shadow-yellow-500/30 animate-pulse' :
+              'bg-red-500 shadow-red-500/30'
+            } shadow-lg`}
+            title={
+              saveStatus === 'saved' ? 'All changes saved' :
+              saveStatus === 'saving' ? 'Saving changes...' :
+              'Unsaved changes'
+            }></div>
 
             {/* Collaboration Button */}
             <button
@@ -790,7 +890,6 @@ export default function NoteApp() {
             modules={module}
             theme="snow"
             onChange={handleTextChange}
-            onChangeSelection={handleSelectionChange}
             placeholder="Start writing your note..."
           />
         </div>
