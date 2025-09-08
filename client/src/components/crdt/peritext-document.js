@@ -1362,6 +1362,116 @@ class PeritextDocument {
   }
 
   /**
+   * Serialize document state for persistence - Firestore compatible
+   */
+  serialize() {
+    // Convert Maps and Sets to plain objects/arrays for Firestore
+    const charactersObj = {};
+    this.characters.forEach((value, key) => {
+      charactersObj[key] = value;
+    });
+
+    const marksObj = {};
+    this.marks.forEach((value, key) => {
+      marksObj[key] = value;
+    });
+
+    const opSetsObj = {};
+    this.opSets.forEach((value, key) => {
+      opSetsObj[key] = Array.from(value);
+    });
+
+    return {
+      userId: this.userId,
+      counter: this.counter,
+      markCounter: this.markCounter,
+      characters: charactersObj,
+      marks: marksObj,
+      rootOpId: this.root.opId,
+      appliedOperations: Array.from(this.appliedOperations),
+      opSets: opSetsObj,
+      version: Date.now()
+    };
+  }
+
+  /**
+   * Create document from serialized state
+   */
+  static deserialize(data, userId) {
+    const doc = new PeritextDocument(userId);
+    
+    // Restore counters
+    doc.counter = data.counter || 0;
+    doc.markCounter = data.markCounter || 0;
+    
+    // Restore characters from object format
+    if (data.characters) {
+      doc.characters = new Map(Object.entries(data.characters));
+    }
+    
+    // Restore marks from object format
+    if (data.marks) {
+      doc.marks = new Map(Object.entries(data.marks));
+    }
+    
+    // Restore root reference
+    if (data.rootOpId && doc.characters.has(data.rootOpId)) {
+      doc.root = doc.characters.get(data.rootOpId);
+    }
+    
+    // Restore applied operations
+    if (data.appliedOperations) {
+      doc.appliedOperations = new Set(data.appliedOperations);
+    }
+    
+    // Restore op-sets from object format
+    if (data.opSets) {
+      doc.opSets = new Map(Object.entries(data.opSets).map(([key, value]) => [key, new Set(value)]));
+    }
+    
+    return doc;
+  }
+
+  /**
+   * Merge another document state into this one (for loading from persistence)
+   */
+  mergeDocument(otherDoc) {
+    // Merge characters
+    for (const [opId, node] of otherDoc.characters) {
+      if (!this.characters.has(opId)) {
+        this.characters.set(opId, { ...node });
+      }
+    }
+    
+    // Merge marks
+    for (const [markId, mark] of otherDoc.marks) {
+      if (!this.marks.has(markId)) {
+        this.marks.set(markId, { ...mark });
+      }
+    }
+    
+    // Update counters to prevent conflicts
+    this.counter = Math.max(this.counter, otherDoc.counter);
+    this.markCounter = Math.max(this.markCounter, otherDoc.markCounter);
+    
+    // Merge applied operations
+    for (const opId of otherDoc.appliedOperations) {
+      this.appliedOperations.add(opId);
+    }
+    
+    // Merge op-sets
+    for (const [key, opSet] of otherDoc.opSets) {
+      if (!this.opSets.has(key)) {
+        this.opSets.set(key, new Set(opSet));
+      } else {
+        for (const op of opSet) {
+          this.opSets.get(key).add(op);
+        }
+      }
+    }
+  }
+
+  /**
    * Get document state for debugging
    */
   getDebugState() {
