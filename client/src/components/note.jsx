@@ -37,6 +37,8 @@ export default function NoteApp() {
   const lastAppliedText = useRef(""); // Track last text applied to prevent loops
   const [inputToken, setInputToken] = useState("");
   const [showInvitePopup, setShowInvitePopup] = useState(false);
+  const [existingCollaborators, setExistingCollaborators] = useState([]);
+  const [documentOwner, setDocumentOwner] = useState(null);
 
   const [noteTitle, setNoteTitle] = useState(location.state && location.state.noteTitle);
 
@@ -314,7 +316,7 @@ export default function NoteApp() {
   }, [localUsername, roomName]);
 
   useEffect(() => {
-    socketRef.current = socketio("http://127.0.0.1:9000", {
+    socketRef.current = socketio(process.env.REACT_APP_SIGNALING_SERVER_URL, {
       transports: ['polling']
     });
 
@@ -461,11 +463,38 @@ export default function NoteApp() {
     navigate("/notes");
   }
 
+  const fetchCollaborators = async () => {
+    if (!noteID) return;
+    
+    const noteRef = doc(firestore, 'notes', noteID);
+    try {
+      const documentSnapshot = await getDoc(noteRef);
+      if (documentSnapshot.exists()) {
+        const data = documentSnapshot.data();
+        const collaborators = data.collaborators || [];
+        const owner = data.owner || data.createdBy || data.lastModifiedBy; // Check actual owner field first
+        
+        setDocumentOwner(owner || null); // Explicitly handle undefined case
+        setExistingCollaborators(collaborators);
+      }
+    } catch (error) {
+      console.error('Error fetching collaborators:', error);
+    }
+  };
+
   const handleInvite = async (email) => {
     if (!email || !isValidEmail(email)) {
       return showToast.error("Please enter a valid email address");
     }
-    console.log(email);
+    
+    // Check if user is already a collaborator
+    if (existingCollaborators.includes(email)) {
+      return showToast.error("User is already a collaborator");
+    }
+    
+    if (email === user?.email) {
+      return showToast.error("You can't invite yourself");
+    }
 
     const noteRef = doc(firestore, 'notes', noteID);
 
@@ -477,12 +506,45 @@ export default function NoteApp() {
         });
 
         setInputToken("");
+        setExistingCollaborators(prev => [...prev, email]);
         showToast.success("User invited successfully");
       } else {
         console.log('Document does not exist');
       }
     } catch (error) {
       console.error('Error fetching document:', error);
+    }
+  };
+
+  const removeCollaborator = async (email) => {
+    // Prevent removing the document owner
+    if (email === documentOwner) {
+      return showToast.error("Cannot remove the document owner");
+    }
+    
+    // Only allow owner or the user themselves to remove collaborators
+    if (documentOwner !== user?.email && email !== user?.email) {
+      return showToast.error("Only the owner can remove other collaborators");
+    }
+
+    const noteRef = doc(firestore, 'notes', noteID);
+    
+    try {
+      const documentSnapshot = await getDoc(noteRef);
+      if (documentSnapshot.exists()) {
+        const data = documentSnapshot.data();
+        const updatedCollaborators = (data.collaborators || []).filter(collab => collab !== email);
+        
+        await updateDoc(noteRef, {
+          collaborators: updatedCollaborators
+        });
+
+        setExistingCollaborators(updatedCollaborators);
+        showToast.success(email === user?.email ? "You left the document" : "Collaborator removed");
+      }
+    } catch (error) {
+      console.error('Error removing collaborator:', error);
+      showToast.error("Failed to remove collaborator");
     }
   };
 
@@ -794,32 +856,70 @@ export default function NoteApp() {
               />
             </div>
 
-            {/* Save Status Indicator */}
-            <div className={`w-3 h-3 rounded-full transition-all duration-500 ${
-              saveStatus === 'saved' ? 'bg-green-500 shadow-green-500/30' :
-              saveStatus === 'saving' ? 'bg-yellow-500 shadow-yellow-500/30 animate-pulse' :
-              'bg-red-500 shadow-red-500/30'
-            } shadow-lg`}
-            title={
-              saveStatus === 'saved' ? 'All changes saved' :
-              saveStatus === 'saving' ? 'Saving changes...' :
-              'Unsaved changes'
-            }></div>
+            {/* Live Collaboration Indicator - Notion Style */}
+            <div className="flex items-center space-x-2">
+              {connectedPeers.length > 0 ? (
+                <div 
+                  className="flex items-center space-x-1.5 px-2.5 py-1 bg-blue-50/80 backdrop-blur-sm border border-blue-200/60 rounded-lg transition-all duration-300 hover:bg-blue-100/80"
+                  title={`${connectedPeers.length + 1} people in this note\n${connectedPeers.map(p => `• ${p.username}${webrtcPeers.find(wp => wp.sid === p.sid) ? ' ✓' : ' (connecting...)'}`).join('\n')}`}
+                >
+                  <div className="flex -space-x-0.5">
+                    {connectedPeers.slice(0, 3).map((peer) => (
+                      <div
+                        key={peer.sid}
+                        className={`w-5 h-5 rounded-full border-2 border-white shadow-sm flex items-center justify-center text-[10px] font-medium text-white transition-all duration-300 ${
+                          webrtcPeers.find(wp => wp.sid === peer.sid) 
+                            ? 'bg-gradient-to-br from-blue-500 to-blue-600 shadow-blue-500/20' 
+                            : 'bg-gradient-to-br from-amber-400 to-amber-500 shadow-amber-400/20 animate-pulse'
+                        }`}
+                        title={`${peer.username} ${webrtcPeers.find(wp => wp.sid === peer.sid) ? '(connected)' : '(connecting...)'}`}
+                      >
+                        {peer.username.charAt(0).toUpperCase()}
+                      </div>
+                    ))}
+                    {connectedPeers.length > 3 && (
+                      <div className="w-5 h-5 rounded-full bg-gradient-to-br from-slate-400 to-slate-500 border-2 border-white shadow-sm flex items-center justify-center">
+                        <span className="text-[10px] font-medium text-white">+{connectedPeers.length - 3}</span>
+                      </div>
+                    )}
+                  </div>
+                  <span className="text-xs font-medium text-blue-700">
+                    {connectedPeers.length === 1 ? '1 other' : `${connectedPeers.length} others`}
+                  </span>
+                </div>
+              ) : connectionStatus === 'connecting' ? (
+                <div className="flex items-center space-x-1.5 px-2.5 py-1 bg-amber-50/80 backdrop-blur-sm border border-amber-200/60 rounded-lg">
+                  <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></div>
+                  <span className="text-xs font-medium text-amber-700">Connecting...</span>
+                </div>
+              ) : connectionStatus === 'error' ? (
+                <div className="flex items-center space-x-1.5 px-2.5 py-1 bg-orange-50/80 backdrop-blur-sm border border-orange-200/60 rounded-lg">
+                  <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                  <span className="text-xs font-medium text-orange-700">Offline</span>
+                </div>
+              ) : (
+                <span className="text-xs font-light text-slate-400">Working alone</span>
+              )}
+            </div>
 
             {/* Collaboration Button */}
             <button
-              onClick={() => setShowInvitePopup(true)}
+              onClick={() => {
+                setShowInvitePopup(true);
+                fetchCollaborators();
+              }}
               className="px-4 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all duration-300"
             >
               <BiGroup className="w-5 h-5" />
             </button>
           </div>
         </div>
+      </div>
 
-        {/* Collaboration Bar */}
-        {showInvitePopup && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" style={{ margin: 0 }}>
-            <div className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 w-full max-w-md mx-auto my-auto">
+      {/* Collaboration Popup - Moved outside header for proper centering */}
+      {showInvitePopup && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 w-full max-w-md">
               {/* Header */}
               <div className="px-6 py-4 border-b border-slate-200/50">
                 <div className="flex items-center justify-between">
@@ -836,9 +936,83 @@ export default function NoteApp() {
               {/* Content */}
               <div className="px-6 py-6">
                 <div className="space-y-4">
+                  {/* Current Collaborators */}
                   <div>
+                    <label className="block text-sm font-light text-slate-600 mb-3">
+                      Current Collaborators
+                    </label>
+                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                      {/* Owner */}
+                      {documentOwner ? (
+                        <div className="flex items-center justify-between p-3 bg-slate-50/80 rounded-lg">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-xs font-medium text-white">
+                              {documentOwner.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                              <span className="text-sm font-medium text-slate-900">{documentOwner}</span>
+                              <span className="text-xs text-slate-500 ml-2">(Owner)</span>
+                              {documentOwner === user?.email && (
+                                <span className="text-xs text-blue-600 ml-1">(You)</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between p-3 bg-amber-50/80 rounded-lg border border-amber-200/50">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-amber-400 to-amber-500 flex items-center justify-center text-xs font-medium text-white">
+                              ?
+                            </div>
+                            <div>
+                              <span className="text-sm font-medium text-slate-900">Unknown Owner</span>
+                              <span className="text-xs text-slate-500 ml-2">(Legacy document)</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Existing collaborators (excluding owner and current user to prevent duplicates) */}
+                      {existingCollaborators
+                        .filter(email => email !== documentOwner) // Don't show owner twice
+                        .map((email, index) => (
+                          <div key={email} className="flex items-center justify-between p-3 bg-slate-50/80 rounded-lg">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-6 h-6 rounded-full bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center text-xs font-medium text-white">
+                                {email.charAt(0).toUpperCase()}
+                              </div>
+                              <div>
+                                <span className="text-sm text-slate-900">{email}</span>
+                                {email === user?.email && (
+                                  <span className="text-xs text-blue-600 ml-2">(You)</span>
+                                )}
+                              </div>
+                            </div>
+                            {(documentOwner === user?.email || email === user?.email) && (
+                              <button
+                                onClick={() => removeCollaborator(email)}
+                                className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1 rounded-lg transition-all duration-200"
+                                title={email === user?.email ? "Leave document" : "Remove collaborator"}
+                              >
+                                <MdOutlineClose className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        ))
+                      }
+
+                      {existingCollaborators.filter(email => email !== documentOwner).length === 0 && !documentOwner && (
+                        <div className="text-center py-4 text-slate-400">
+                          <span className="text-sm">No collaborators yet</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Add new collaborator */}
+                  <div className="border-t border-slate-200/50 pt-4">
                     <label className="block text-sm font-light text-slate-600 mb-2">
-                      Collaborator Email
+                      Invite New Collaborator
                     </label>
                     <input
                       type="text"
@@ -849,7 +1023,6 @@ export default function NoteApp() {
                       onKeyPress={(e) => {
                         if (e.key === 'Enter') {
                           handleInvite(inputToken);
-                          setShowInvitePopup(false);
                         }
                       }}
                       autoFocus
@@ -861,13 +1034,10 @@ export default function NoteApp() {
                       onClick={() => setShowInvitePopup(false)}
                       className="flex-1 px-4 py-3 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all duration-300 font-light"
                     >
-                      Cancel
+                      Done
                     </button>
                     <button
-                      onClick={() => {
-                        handleInvite(inputToken);
-                        setShowInvitePopup(false);
-                      }}
+                      onClick={() => handleInvite(inputToken)}
                       disabled={!inputToken.trim()}
                       className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed font-light flex items-center justify-center space-x-2"
                     >
@@ -880,7 +1050,6 @@ export default function NoteApp() {
             </div>
           </div>
         )}
-      </div>
 
       {/* Editor Container */}
       <div className="max-w-5xl mx-auto px-6 py-6">
@@ -894,6 +1063,21 @@ export default function NoteApp() {
           />
         </div>
       </div>
+
+      {/* Floating Save Status - Google Docs Style */}
+      {saveStatus !== 'saved' && (
+        <div className="fixed bottom-6 right-6 z-30">
+          <div className={`px-3 py-2 rounded-full shadow-lg backdrop-blur-sm transition-all duration-300 border ${
+            saveStatus === 'saving' 
+              ? 'bg-amber-100/90 text-amber-700 border-amber-200' 
+              : 'bg-red-100/90 text-red-700 border-red-200'
+          }`}>
+            <span className="text-xs font-medium">
+              {saveStatus === 'saving' ? 'Saving...' : 'Unsaved'}
+            </span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
