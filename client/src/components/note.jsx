@@ -316,8 +316,11 @@ export default function NoteApp() {
   }, [localUsername, roomName]);
 
   useEffect(() => {
+    console.log('Connecting to:', process.env.REACT_APP_SIGNALING_SERVER_URL);
     socketRef.current = socketio(process.env.REACT_APP_SIGNALING_SERVER_URL, {
-      transports: ['polling']
+      transports: ['websocket', 'polling'],
+      upgrade: true,
+      rememberUpgrade: true
     });
 
     // Handle page refresh/close - cleanup WebRTC connections
