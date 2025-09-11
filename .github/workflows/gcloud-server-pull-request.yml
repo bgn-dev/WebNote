@@ -1,0 +1,30 @@
+name: Deploy to Cloud Run on PR
+on: pull_request
+
+permissions:
+  checks: write
+  contents: read
+  pull-requests: write
+
+jobs:
+  build_and_preview:
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      # Server-specific steps
+      - name: Setup Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          service_account_key: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+          project_id: webnote-df968
+          export_default_credentials: true
+
+      - name: Configure Docker for GCR
+        run: gcloud auth configure-docker
+        
+      - name: Build Docker image
+        working-directory: ./server
+        run: |
+          gcloud builds submit --tag gcr.io/webnote-df968/webnote:pr-${{ github.event.number }}
