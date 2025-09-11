@@ -13,13 +13,21 @@ import { MdOutlineUploadFile } from 'react-icons/md';
 
 export default function Grid() {
     const navigate = useNavigate();
+
     const { user } = useAuth();
 
     const [personalNotes, setNotes] = useState([]);
     const [collabedNotes, setCollabedDocs] = useState([]);
     const [noteTitle, setNoteTitle] = useState("");
     const [toggle, setToggle] = useState(true);
-    const [collabToggle, setCollabToggle] = useState(false);
+    const [collabToggle, setCollabToggle] = useState(() => {
+        const stored = localStorage.getItem("collabToggle");
+        if (stored === null) {
+        localStorage.setItem("collabToggle", JSON.stringify(false)); // initialize
+        return false;
+        }
+        return JSON.parse(stored);
+    });
 
     const currentUserEmail = user?.email;
     const colRef = collection(firestore, "notes");
@@ -107,7 +115,11 @@ export default function Grid() {
     };
 
     const handleNote = (ID, title) => {
-        navigate("/note", { state: { noteID: ID, noteTitle: title } });
+        navigate(`/note/${ID}`, { 
+            state: { 
+                noteTitle: title 
+            } 
+        });
     }
 
     function handleNewNote() {

@@ -1,31 +1,22 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from "react-router-dom";
+
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+
 import { useAuth } from '../firebase/auth';
+
 import { PiSignOutBold } from 'react-icons/pi';
 import { BiSearchAlt2 } from 'react-icons/bi';
 import { BiGroup } from 'react-icons/bi';
 import { BiMenu } from 'react-icons/bi';
-import { MdOutlineToken } from 'react-icons/md';
 
 export default function Navbar({ collabToggle, setCollabToggle }) {
     const navigate = useNavigate();
-    const { user, logout } = useAuth();
-    const [clickedOnce, setClickedOnce] = useState(false);
-    const [showDropdown, setShowDropdown] = useState(false);
 
-    const token_toast = () => {
-        if (!user?.uid) {
-            toast('Something went wrong!', {
-                icon: <MdOutlineToken />,
-            });
-        } else {
-            toast(user.uid, {
-                icon: <MdOutlineToken />,
-            });
-        }
-    };
+    const { user, logout } = useAuth();
+
+    const [showDropdown, setShowDropdown] = useState(false);
 
     const group_toast = (text) => toast(text, {
         icon: <BiGroup />,
@@ -45,10 +36,12 @@ export default function Navbar({ collabToggle, setCollabToggle }) {
         }
     }
 
+    useEffect(() => {
+        localStorage.setItem("collabToggle", JSON.stringify(collabToggle));
+    }, [collabToggle]);
+
     function collabsToggle() {
-        setCollabToggle(!collabToggle);
-        localStorage.setItem("collabToggle", collabToggle);
-        setClickedOnce(!clickedOnce);
+        setCollabToggle(prev => !prev);
     }
 
     const handleLogout = async () => {
@@ -92,18 +85,17 @@ export default function Navbar({ collabToggle, setCollabToggle }) {
 
                     {/* Desktop Actions */}
                     <div className="hidden md:flex items-center space-x-3">
-                        <button 
+                        <button
                             onClick={() => { collabsToggle(); grop_toast_string() }}
-                            className={`px-4 py-3 rounded-xl transition-all duration-300 font-medium ${
-                                clickedOnce 
-                                    ? 'bg-blue-100 text-blue-700 hover:bg-blue-200 shadow-sm' 
+                            className={`px-4 py-3 rounded-xl transition-all duration-300 font-medium ${collabToggle
+                                    ? 'bg-blue-100 text-blue-700 hover:bg-blue-200 shadow-sm'
                                     : 'text-slate-700 hover:text-slate-900 hover:bg-slate-100'
-                            }`}
+                                }`}
                         >
                             <BiGroup className="w-5 h-5" />
                         </button>
 
-                        <button 
+                        <button
                             onClick={handleLogout}
                             className="px-4 py-3 text-slate-700 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all duration-300 font-medium"
                         >
@@ -113,7 +105,7 @@ export default function Navbar({ collabToggle, setCollabToggle }) {
 
                     {/* Mobile Menu Button */}
                     <div className="md:hidden relative">
-                        <button 
+                        <button
                             onClick={() => setShowDropdown(!showDropdown)}
                             className="px-4 py-3 text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all duration-300 font-medium"
                         >
@@ -133,25 +125,24 @@ export default function Navbar({ collabToggle, setCollabToggle }) {
                                         <BiSearchAlt2 className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-500" />
                                     </div>
                                 </div>
-                                
+
                                 <div className="border-t border-slate-200/50 mt-2 pt-2">
-                                    <button 
-                                        onClick={() => { 
-                                            collabsToggle(); 
+                                    <button
+                                        onClick={() => {
+                                            collabsToggle();
                                             grop_toast_string();
                                             setShowDropdown(false);
                                         }}
-                                        className={`w-full flex items-center space-x-3 px-4 py-4 text-left transition-all duration-300 font-medium ${
-                                            clickedOnce 
-                                                ? 'bg-blue-50 text-blue-700' 
+                                        className={`w-full flex items-center space-x-3 px-4 py-4 text-left transition-all duration-300 font-medium ${collabToggle
+                                                ? 'bg-blue-50 text-blue-700'
                                                 : 'text-slate-700 hover:bg-slate-50'
-                                        }`}
+                                            }`}
                                     >
                                         <BiGroup className="w-5 h-5" />
                                         <span className="font-light">Collaboration</span>
                                     </button>
 
-                                    <button 
+                                    <button
                                         onClick={() => {
                                             handleLogout();
                                             setShowDropdown(false);
