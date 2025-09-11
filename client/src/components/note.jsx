@@ -316,7 +316,7 @@ export default function NoteApp() {
   }, [localUsername, roomName]);
 
   useEffect(() => {
-    socketRef.current = socketio("http://127.0.0.1:9000", {
+    socketRef.current = socketio(process.env.REACT_APP_SIGNALING_SERVER_URL, {
       transports: ['polling']
     });
 
