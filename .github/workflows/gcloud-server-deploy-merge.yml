@@ -3,6 +3,9 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'server/**'
+  workflow_dispatch:
 
 jobs:
   build_and_deploy:

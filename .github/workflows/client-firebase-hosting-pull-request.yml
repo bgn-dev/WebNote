@@ -1,5 +1,8 @@
 name: Deploy to Firebase Hosting on PR
-on: pull_request
+on:
+  pull_request:
+    paths:
+      - 'client/**'
 
 permissions:
   checks: write
@@ -30,6 +33,7 @@ jobs:
           REACT_APP_FIREBASE_MESSAGING_SENDER_ID: ${{secrets.REACT_APP_FIREBASE_MESSAGING_SENDER_ID}}
           REACT_APP_FIREBASE_APP_ID: ${{secrets.REACT_APP_FIREBASE_APP_ID}}
           REACT_APP_FIREBASE_MEASUREMENT_ID: ${{secrets.REACT_APP_FIREBASE_MEASUREMENT_ID}}
+          REACT_APP_SIGNALING_SERVER_URL: ${{ secrets.REACT_APP_SIGNALING_SERVER_URL }}
         
       - name: Deploy preview
         uses: FirebaseExtended/action-hosting-deploy@v0
