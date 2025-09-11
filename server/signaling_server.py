@@ -1,8 +1,16 @@
+import os
+import secrets
+from pathlib import Path
 from flask import Flask, request
 from flask_socketio import SocketIO, emit, join_room
+from dotenv import load_dotenv
+
+# Load environment variables from client/.env (where React expects it)
+env_path = Path(__file__).parent.parent / "client" / ".env"
+load_dotenv(env_path)
 
 app = Flask(__name__)
-app.secret_key = 'random secret key!'
+app.secret_key = os.environ.get('FLASK_SECRET_KEY') or secrets.token_hex(32)
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 active_connections = {}  # Track connections by room
@@ -99,4 +107,9 @@ def handle_disconnect():
             break
 
 if __name__ == "__main__":
-    socketio.run(app, host="127.0.0.1", port=9000, debug=True)
+    host = os.environ.get('FLASK_HOST', '127.0.0.1')
+    port = int(os.environ.get('FLASK_PORT', 9000))
+    debug = os.environ.get('FLASK_DEBUG', 'True').lower() in ['true', '1', 'yes']
+    
+    print(f"Starting Flask-SocketIO server on {host}:{port}")
+    socketio.run(app, host=host, port=port, debug=debug)
