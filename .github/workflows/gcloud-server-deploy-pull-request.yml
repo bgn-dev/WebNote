@@ -14,12 +14,13 @@ jobs:
       - uses: actions/checkout@v4
       
       # Server-specific steps
-      - name: Setup Google Cloud SDK
-        uses: google-github-actions/setup-gcloud@v1
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v1
         with:
-          service_account_key: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
-          project_id: webnote-df968
-          export_default_credentials: true
+          credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
 
       - name: Configure Docker for GCR
         run: gcloud auth configure-docker
