@@ -21,6 +21,10 @@ jobs:
         working-directory: ./client
         run: npm ci
         
+      - name: Run tests
+        working-directory: ./client
+        run: npm test -- --coverage --watchAll=false
+        
       - name: Build production app
         working-directory: ./client
         # Ignore all warnings, so it deploys
