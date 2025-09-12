@@ -640,7 +640,7 @@ class PeritextDocument {
     }
     
     // For remote operations: check if this appears to be part of a sequential typing session
-    // Look at the immediate right neighbor to see if there's a pattern
+    // Only treat as sequential if it's clearly part of the same user's typing sequence
     
     // If the leftNode is from the same user and this is the immediate next counter,
     // treat as sequential
@@ -649,23 +649,34 @@ class PeritextDocument {
       return true;
     }
     
-    // If no immediate right neighbor or right neighbor is from different user/time,
-    // treat as sequential (preserving user intent)
+    // Special case: if leftNode is the root, always use RGA ordering for conflicts
+    // This ensures concurrent inserts at the beginning are deterministically ordered
+    if (leftNode.opId === this.root.opId) {
+      return false; // Force RGA ordering for concurrent operations at root
+    }
+    
+    // Check if there's a right neighbor that conflicts
     if (!leftNode.rightId) {
-      return true; // Appending to end
+      // No right neighbor - this is truly appending to the end
+      // Only treat as sequential if it's from the same user as leftNode
+      return leftNode.userId === newNode.userId;
     }
     
     const rightNode = this.characters.get(leftNode.rightId);
-    if (!rightNode) return true;
-    
-    // If right node is from different user or much later timestamp, treat as sequential
-    if (rightNode.userId !== newNode.userId || 
-        Math.abs(rightNode.timestamp - newNode.timestamp) > 1000) { // 1 second threshold
-      return true;
+    if (!rightNode) {
+      // Missing right node data, treat as sequential to preserve intent
+      return leftNode.userId === newNode.userId;
     }
     
-    // Otherwise, use RGA ordering for concurrent operations
-    return false;
+    // If right node is from different user and timestamps are close (concurrent),
+    // use RGA ordering to ensure deterministic resolution
+    if (rightNode.userId !== newNode.userId && 
+        Math.abs(rightNode.timestamp - newNode.timestamp) <= 1000) { // 1 second threshold
+      return false; // Use RGA ordering for concurrent operations
+    }
+    
+    // If right node is from same user or much later timestamp, treat as sequential
+    return true;
   }
 
   /**
