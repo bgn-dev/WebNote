@@ -991,6 +991,58 @@ class PeritextDocument {
   }
 
   /**
+   * Get text index where an operation occurred/will occur
+   * @param {Object} operation - Operation object
+   * @returns {number} - Text index (-1 if not found)
+   */
+  getTextIndexForOperation(operation) {
+    if (!operation) return -1;
+    
+    switch (operation.action) {
+      case 'insert':
+        // For insert operations, find where the character was/will be inserted
+        if (operation.opId && this.characters.has(operation.opId)) {
+          return this.getIndexOfOpId(operation.opId);
+        }
+        // If not found, calculate based on leftId
+        if (operation.leftId) {
+          const leftIndex = this.getIndexOfOpId(operation.leftId);
+          return leftIndex >= 0 ? leftIndex + 1 : 0;
+        }
+        return 0; // Insert at beginning
+        
+      case 'delete':
+        // For delete operations, find where the character was before deletion
+        if (operation.targetId) {
+          // Check if character still exists (not yet deleted)
+          const targetNode = this.characters.get(operation.targetId);
+          if (targetNode && !targetNode.deleted) {
+            return this.getIndexOfOpId(operation.targetId);
+          }
+          
+          // If already deleted, find its position in sequence
+          const sequence = this.getOrderedSequence();
+          const targetIndex = sequence.findIndex(node => node.opId === operation.targetId);
+          if (targetIndex >= 0) {
+            // Count visible characters before this position
+            let textIndex = 0;
+            for (let i = 0; i < targetIndex; i++) {
+              const node = sequence[i];
+              if (!node.deleted && node.char !== null) {
+                textIndex++;
+              }
+            }
+            return textIndex;
+          }
+        }
+        return -1;
+        
+      default:
+        return -1;
+    }
+  }
+
+  /**
    * Get marks that apply to a specific character position
    * Uses anchor position system to determine mark coverage
    * @param {string} opId - Character operation ID
