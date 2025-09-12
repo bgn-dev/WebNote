@@ -5,6 +5,9 @@ node_modules/
 
 # testing
 /coverage
+/client/coverage
+*.test.js.snap
+/test-results/
 
 # firebase
 .firebase/
