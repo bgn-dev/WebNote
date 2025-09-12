@@ -244,6 +244,56 @@ export default function NoteApp() {
     return operations;
   };
 
+  // Helper function to adjust cursor position for operations
+  const adjustCursorForOperation = useCallback((originalRange, operation, rgaDocument) => {
+    if (!originalRange || !operation || !rgaDocument) {
+      return originalRange;
+    }
+
+    const opTextIndex = rgaDocument.getTextIndexForOperation(operation);
+    if (opTextIndex === -1) {
+      return originalRange; // Operation position unknown, no adjustment
+    }
+
+    let adjustedIndex = originalRange.index;
+    let adjustedLength = originalRange.length || 0;
+
+    // Adjust cursor index based on operation type and position
+    if (operation.action === 'insert') {
+      // If operation is before or at cursor, shift cursor forward
+      if (opTextIndex <= adjustedIndex) {
+        adjustedIndex += 1;
+      }
+      // If operation is within selection, extend selection
+      else if (adjustedLength > 0 && opTextIndex < adjustedIndex + adjustedLength) {
+        adjustedLength += 1;
+      }
+    } else if (operation.action === 'delete') {
+      // If deletion is before cursor, shift cursor backward
+      if (opTextIndex < adjustedIndex) {
+        adjustedIndex = Math.max(0, adjustedIndex - 1);
+      }
+      // If deletion is at cursor position, cursor stays at same position
+      else if (opTextIndex === adjustedIndex) {
+        // Cursor stays at same index (now pointing to next character)
+      }
+      // If deletion is within selection, shrink selection
+      else if (adjustedLength > 0 && opTextIndex < adjustedIndex + adjustedLength) {
+        adjustedLength = Math.max(0, adjustedLength - 1);
+      }
+    }
+
+    // Ensure cursor doesn't exceed document bounds
+    const newDocumentLength = rgaDocument.getText().length;
+    adjustedIndex = Math.min(adjustedIndex, newDocumentLength);
+    adjustedLength = Math.min(adjustedLength, newDocumentLength - adjustedIndex);
+
+    return {
+      index: adjustedIndex,
+      length: adjustedLength
+    };
+  }, []);
+
   // Memoized callbacks to prevent recreating WebRTC manager
   const handleMessage = useCallback((username, message) => {
     if (!rgaDoc) return;
@@ -273,15 +323,19 @@ export default function NoteApp() {
             const formattedContent = rgaDoc.getFormattedContent();
             const newText = rgaDoc.getText();
             
-            
             // Apply both text and formatting using Quill delta
             editor.setContents(formattedContent, 'silent');
             
-            // Restore cursor position if possible
+            // Restore cursor position with adjustment for the operation
             if (range) {
+              const adjustedRange = adjustCursorForOperation(range, op, rgaDoc);
               const newLength = newText.length;
-              const safeIndex = Math.min(range.index, newLength);
-              editor.setSelection(safeIndex, 0, 'silent');
+              const safeIndex = Math.min(adjustedRange.index, newLength);
+              const safeLength = Math.min(adjustedRange.length || 0, newLength - safeIndex);
+              
+              editor.setSelection(safeIndex, safeLength, 'silent');
+              
+              console.log(`[CURSOR] Adjusted cursor from ${range.index} to ${safeIndex} (op: ${op.action} at ${rgaDoc.getTextIndexForOperation(op)})`);
             }
             
             // Update our text tracking
@@ -295,7 +349,7 @@ export default function NoteApp() {
     } catch (e) {
       // Ignore non-JSON messages
     }
-  }, [rgaDoc, user?.email]);
+  }, [rgaDoc, user?.email, adjustCursorForOperation]);
 
   // Apply remote formatting operation to Quill editor
   const handlePeerConnected = useCallback((peerId, username) => {
