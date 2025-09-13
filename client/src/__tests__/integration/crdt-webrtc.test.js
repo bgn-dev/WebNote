@@ -9,7 +9,7 @@ import {
   MockSocketIOClient, 
   MockWebRTCNetwork, 
   setupWebRTCMocks 
-} from '../unit/webrtc/webrtc-mocks';
+} from '../utils/webrtc-mocks.mjs';
 
 // Setup mocks
 beforeAll(() => {
