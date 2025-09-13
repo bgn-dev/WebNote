@@ -314,7 +314,9 @@ class WebRTCManager {
                 peer.channel.onmessage = null;
                 peer.channel.onclose = null;
                 peer.channel.onerror = null;
-                peer.channel.close();
+                if (typeof peer.channel.close === 'function') {
+                    peer.channel.close();
+                }
             }
             
             this.peers.delete(peerId);
@@ -340,7 +342,9 @@ class WebRTCManager {
                     peer.channel.onmessage = null;
                     peer.channel.onclose = null;
                     peer.channel.onerror = null;
-                    peer.channel.close();
+                    if (typeof peer.channel.close === 'function') {
+                        peer.channel.close();
+                    }
                 }
             } catch (error) {
                 console.error(`Error cleaning up peer ${peerId}:`, error);
