@@ -101,7 +101,8 @@ describe('CRDT + WebRTC Integration', () => {
           setTimeout(() => {
             bobManager.onMessage('alice', msg);
           }, 10);
-        })
+        }),
+        close: jest.fn()
       };
       
       bobPeer.channel = { 
@@ -111,7 +112,8 @@ describe('CRDT + WebRTC Integration', () => {
           setTimeout(() => {
             aliceManager.onMessage('bob', msg);
           }, 10);
-        })
+        }),
+        close: jest.fn()
       };
 
       // Alice types "Hello"
@@ -177,14 +179,16 @@ describe('CRDT + WebRTC Integration', () => {
         readyState: 'open', 
         send: jest.fn((msg) => {
           setTimeout(() => bobManager.onMessage('alice', msg), 10);
-        })
+        }),
+        close: jest.fn()
       };
       
       bobPeer.channel = { 
         readyState: 'open', 
         send: jest.fn((msg) => {
           setTimeout(() => aliceManager.onMessage('bob', msg), 10);
-        })
+        }),
+        close: jest.fn()
       };
 
       // Alice builds "ABC" sequentially
@@ -235,7 +239,8 @@ describe('CRDT + WebRTC Integration', () => {
           if (networkUp) {
             setTimeout(() => bobManager.onMessage('alice', msg), 10);
           }
-        })
+        }),
+        close: jest.fn()
       };
       
       bobPeer.channel = { 
@@ -244,7 +249,8 @@ describe('CRDT + WebRTC Integration', () => {
           if (networkUp) {
             setTimeout(() => aliceManager.onMessage('bob', msg), 10);
           }
-        })
+        }),
+        close: jest.fn()
       };
 
       // Alice types while connected
@@ -313,7 +319,8 @@ describe('CRDT + WebRTC Integration', () => {
           if (messageCount % 2 === 0) {
             setTimeout(() => bobManager.onMessage('alice', msg), 10);
           }
-        })
+        }),
+        close: jest.fn()
       };
 
       // Send multiple operations - some at root to be independent
@@ -396,7 +403,8 @@ describe('CRDT + WebRTC Integration', () => {
             readyState: 'open', 
             send: jest.fn((msg) => {
               setTimeout(() => broadcastToAll(manager, msg), 10);
-            })
+            }),
+            close: jest.fn()
           };
         });
       });
