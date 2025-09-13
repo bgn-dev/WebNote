@@ -157,8 +157,8 @@ describe('WebRTCManager - Basic Functionality', () => {
       // Mock data channels as open
       const peer1 = manager.peers.get('peer1');
       const peer2 = manager.peers.get('peer2');
-      peer1.channel = { readyState: 'open', send: jest.fn() };
-      peer2.channel = { readyState: 'open', send: jest.fn() };
+      peer1.channel = { readyState: 'open', send: jest.fn(), close: jest.fn() };
+      peer2.channel = { readyState: 'open', send: jest.fn(), close: jest.fn() };
       
       const message = 'test message';
       manager.broadcastMessage(message);
@@ -173,8 +173,8 @@ describe('WebRTCManager - Basic Functionality', () => {
       
       const peer1 = manager.peers.get('peer1');
       const peer2 = manager.peers.get('peer2');
-      peer1.channel = { readyState: 'open', send: jest.fn() };
-      peer2.channel = { readyState: 'closed', send: jest.fn() };
+      peer1.channel = { readyState: 'open', send: jest.fn(), close: jest.fn() };
+      peer2.channel = { readyState: 'closed', send: jest.fn(), close: jest.fn() };
       
       manager.broadcastMessage('test');
       

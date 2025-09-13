@@ -209,6 +209,7 @@ describe('CRDT Property Validation (Will Pass After Fix)', () => {
     test('handles empty operations gracefully', () => {
       const doc = new PeritextDocument('user1');
       
+      // This should trigger a console.warn for "Unknown operation type: undefined" - this is expected
       const invalidOp = {};
       const result = doc.applyOperation(invalidOp);
       
