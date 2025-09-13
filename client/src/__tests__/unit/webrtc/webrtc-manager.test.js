@@ -9,7 +9,7 @@ import {
   MockWebRTCNetwork, 
   setupWebRTCMocks,
   createMockWebRTCEnvironment 
-} from './webrtc-mocks';
+} from '../../utils/webrtc-mocks.mjs';
 
 // Setup WebRTC mocks before tests
 beforeAll(() => {
