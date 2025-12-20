@@ -42,4 +42,4 @@ jobs:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_WEBNOTE_DF968 }}
           channelId: live
-          projectId: ***REMOVED***
+          projectId: ${{ secrets.REACT_APP_FIREBASE_PROJECT_ID }}
