@@ -1,58 +1,66 @@
 # WebNote
 
-🎉 **WebNote** is a modern, real-time collaborative note-taking application that allows users to create, edit, and share notes seamlessly. 🎉
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![React](https://img.shields.io/badge/React-19-61dafb?logo=react)](https://reactjs.org/)
+[![Firebase](https://img.shields.io/badge/Firebase-FFCA28?logo=firebase&logoColor=black)](https://firebase.google.com/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind-3-38bdf8?logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 
-## ✨ Features
+A real-time collaborative note-taking application built with React and Firebase, enabling simultaneous multi-user document editing and synchronization.
 
-- **🔐 Secure Authentication** - Email/password and Google OAuth sign-in
-- **📝 Real-time Collaboration** - Multiple users can edit notes simultaneously
-- **🎨 Modern UI** - Clean, responsive design with dark/light themes
-- **📁 Note Organization** - Personal and collaborative note management
-- **⚡ Live Sync** - Changes are saved and synced automatically
-- **📱 Mobile Responsive** - Designed to be responsive 
+## Features
 
-## 🏗️ Architecture
+- **Authentication** - Email/password and Google OAuth integration
+- **Real-time Collaboration** - Simultaneous multi-user editing with live synchronization
+- **Rich Text Editing** - Full-featured editor with formatting capabilities
+- **Note Management** - Personal and shared note organization
+- **Responsive Design** - Mobile-first UI with theme support
+- **Auto-save** - Automatic change detection and persistence
 
-**Frontend:**
-- **React 18** 
-- **Tailwind CSS** for styling and responsive design
-- **React Router** for client-side navigation
-- **React Quill** for rich text editing
-- **Firebase SDK** for authentication and real-time database
+## Tech Stack
 
-**Backend & Services:**
-- **Firebase Authentication** for user management
-- **Cloud Firestore** for real-time document storage
-- **Firebase Hosting** for static site deployment
+### Frontend
+- React 19
+- Tailwind CSS
+- React Router
+- React Quill
+- React Toastify
 
-**DevOps:**
-- **GitHub Actions** for CI/CD
-- **Environment variables** for secure configuration
-- **Automated deployments** to Firebase Hosting
+### Backend & Services
+- Firebase Authentication
+- Cloud Firestore
+- Firebase Hosting
 
-## 🚀 Quick Start
+### Development & CI/CD
+- GitHub Actions
+- Jest & React Testing Library
+
+## Installation
 
 ### Prerequisites
-- Node.js (v16 or higher)
+
+- Node.js >= 16.x
 - npm or yarn
 - Firebase account
 
-### 1. Clone the Repository
+### Setup
+
+1. Clone the repository
 ```bash
 git clone https://github.com/yourusername/WebNote.git
 cd WebNote
 ```
 
-### 2. Install Dependencies
+2. Install dependencies
 ```bash
 cd client
 npm install
 ```
 
-### 3. Environment Setup
-Create a `.env` file in the `client/` directory:
-```bash
-# Firebase Configuration
+3. Configure environment variables
+
+Create `client/.env`:
+```env
 REACT_APP_FIREBASE_API_KEY=your_api_key
 REACT_APP_FIREBASE_AUTH_DOMAIN=your_auth_domain
 REACT_APP_FIREBASE_PROJECT_ID=your_project_id
@@ -62,85 +70,57 @@ REACT_APP_FIREBASE_APP_ID=your_app_id
 REACT_APP_FIREBASE_MEASUREMENT_ID=your_measurement_id
 ```
 
-### 4. Run Development Server
+4. Start development server
 ```bash
 npm start
 ```
 
-The app will be available at `http://localhost:3000`
+Application runs at `http://localhost:3000`
 
-### 5. Build for Production
+5. Build for production
 ```bash
 npm run build
 ```
 
-## 🔧 Firebase Setup
+## Firebase Configuration
 
-1. **Create a Firebase Project**
-   - Go to [Firebase Console](https://console.firebase.google.com/)
-   - Create a new project
-   - Enable Authentication and Firestore
+1. Create a new project in [Firebase Console](https://console.firebase.google.com/)
+2. Enable Authentication providers (Email/Password, Google)
+3. Create a Firestore database
+4. Configure security rules for data access control
+5. Retrieve web app configuration from Project Settings
+6. Add configuration values to `.env` file
 
-2. **Configure Authentication**
-   - Enable Email/Password provider
-   - Enable Google provider
-   - Add your domain to authorized domains
+## Deployment
 
-3. **Set up Firestore**
-   - Create a Firestore database
-   - Configure security rules as needed
+Automatic deployment via GitHub Actions on push to `main` branch.
 
-4. **Get Configuration**
-   - Go to Project Settings → General
-   - Copy your web app configuration
-   - Add values to your `.env` file
+### Required GitHub Secrets
+- `REACT_APP_FIREBASE_*` - Firebase configuration values
+- `FIREBASE_SERVICE_ACCOUNT_*` - Service account credentials
 
-## 📦 Deployment
+Pull requests trigger preview deployments automatically.
 
-The project uses GitHub Actions for automatic deployment to Firebase Hosting:
+## Testing
+```bash
+npm test
+```
 
-1. **Set up GitHub Secrets**
-   - `REACT_APP_FIREBASE_*` (all Firebase config values)
-   - `FIREBASE_SERVICE_ACCOUNT_*` (service account key)
+## Security
 
-2. **Deploy**
-   - Push to `main` branch for production deployment
-   - Create pull request for preview deployment
+- Environment variables for sensitive configuration
+- Firebase Security Rules for data access control
+- Authentication required for all features
+- HTTPS-only communication
 
-## 🛠️ Key Technologies
-
-- **React 18** - Frontend framework
-- **Firebase** - Backend services
-- **Tailwind CSS** - Utility-first CSS framework
-- **React Router** - Client-side routing
-- **React Quill** - Rich text editor
-- **Lodash** - Utility library
-- **React Toastify** - Notifications
-
-## 🔒 Security
-
-- **Environment Variables** - Sensitive configuration is stored securely
-- **Firebase Security Rules** - Database access is properly controlled
-- **Authentication Required** - All features require user authentication
-- **HTTPS Only** - All communications are encrypted
-
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+2. Create a feature branch (`git checkout -b feature/feature-name`)
+3. Commit changes (`git commit -m 'Add feature description'`)
+4. Push to branch (`git push origin feature/feature-name`)
+5. Submit a Pull Request
 
-## 📄 License
+## License
 
-This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
-
-## 🎯 Roadmap
-
-- [ ] WebRTC
-- [ ] Conflict-free Replicated Data Type
-
----
-
-**Made with ❤️ using React and Firebase**
+Licensed under the GNU General Public License v3.0. See [LICENSE](LICENSE) for details.
