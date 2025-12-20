@@ -1,10 +1,9 @@
 # WebNote
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![React](https://img.shields.io/badge/React-19-61dafb?logo=react)](https://reactjs.org/)
+[![React](https://img.shields.io/badge/React-18-61dafb?logo=react)](https://reactjs.org/)
 [![Firebase](https://img.shields.io/badge/Firebase-FFCA28?logo=firebase&logoColor=black)](https://firebase.google.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-3-38bdf8?logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 
 A real-time collaborative note-taking application built with React and Firebase, enabling simultaneous multi-user document editing and synchronization.
 
@@ -26,7 +25,7 @@ For a complete list of known issues, visit the [issue tracker](https://github.co
 ## Tech Stack
 
 ### Frontend
-- React 19
+- React 18
 - Tailwind CSS
 - React Router
 - React Quill
@@ -39,7 +38,7 @@ For a complete list of known issues, visit the [issue tracker](https://github.co
 
 ### Development & CI/CD
 - GitHub Actions
-- Jest & React Testing Library
+- Jest
 
 ## Installation
 
