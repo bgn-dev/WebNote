@@ -8,6 +8,12 @@
 
 A real-time collaborative note-taking application built with React and Firebase, enabling simultaneous multi-user document editing and synchronization.
 
+## Known Issues
+
+- **Bi-directional linking** - Bi-directional linking in linked list causes circular references ending in endless loops. This affects real-time collaboration features. See [#33](https://github.com/bgn-dev/WebNote/issues/33) for details and current status.
+
+For a complete list of known issues, visit the [issue tracker](https://github.com/bgn-dev/WebNote/issues).
+
 ## Features
 
 - **Authentication** - Email/password and Google OAuth integration
