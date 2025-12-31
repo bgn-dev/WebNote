@@ -1,13 +1,7 @@
 import os
 import secrets
-from pathlib import Path
 from flask import Flask, request
 from flask_socketio import SocketIO, emit, join_room
-from dotenv import load_dotenv
-
-# Load environment variables from client/.env (where React expects it)
-env_path = Path(__file__).parent.parent / "client" / ".env"
-load_dotenv(env_path)
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('FLASK_SECRET_KEY') or secrets.token_hex(32)

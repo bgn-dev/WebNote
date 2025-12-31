@@ -63,9 +63,9 @@ export default function Login() {
                 <div className="absolute w-96 h-96 -top-48 -right-48 rounded-full bg-gradient-to-br from-blue-400/20 to-purple-600/20 blur-3xl"></div>
                 <div className="absolute w-80 h-80 -bottom-40 -left-40 rounded-full bg-gradient-to-tr from-indigo-500/20 to-cyan-400/20 blur-3xl"></div>
                 
-                {/* Refined brand content */}
+                {/* Brand content */}
                 <div className="text-center text-white relative z-10 max-w-lg">
-                    {/* Modern logo with geometric design */}
+                    {/* Logo with geometric design */}
                     <div className="inline-flex items-center justify-center w-24 h-24 bg-white/10 backdrop-blur-xl rounded-2xl mb-8 shadow-2xl border border-white/20">
                         <div className="relative">
                             <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-purple-500 rounded-lg rotate-12 absolute"></div>
@@ -79,31 +79,13 @@ export default function Login() {
                     <p className="text-xl text-white/70 mb-12 font-light leading-relaxed">
                         Craft ideas with <span className="text-blue-300 font-medium">precision</span> and <span className="text-purple-300 font-medium">elegance</span>
                     </p>
-                    
-                    {/* Elegant feature showcase */}
-                    <div className="space-y-6 text-white/60">
-                        {[
-                            { icon: "✦", text: "Real-time collaboration", color: "text-blue-300" },
-                            { icon: "◆", text: "End-to-end encryption", color: "text-purple-300" },
-                            { icon: "✧", text: "Distraction-free writing", color: "text-cyan-300" }
-                        ].map((feature, index) => (
-                            <div key={index} className="flex items-center space-x-4 group">
-                                <span className={`text-lg ${feature.color} group-hover:scale-110 transition-transform duration-300`}>
-                                    {feature.icon}
-                                </span>
-                                <span className="font-light tracking-wide group-hover:text-white/80 transition-colors duration-300">
-                                    {feature.text}
-                                </span>
-                            </div>
-                        ))}
-                    </div>
                 </div>
             </div>
             
             {/* Right Side - Scrollable Login Form */}
             <div className="w-full lg:w-2/5 h-screen overflow-y-auto bg-white/80 backdrop-blur-sm relative">
                 <div className="min-h-full flex items-center justify-center p-8">
-                    {/* Elegant login container */}
+                    {/* Login container */}
                     <div className="w-full max-w-md relative my-8">
                         <div className="bg-white/90 backdrop-blur-xl rounded-3xl p-10 shadow-2xl border border-white/20 relative overflow-hidden">
                             {/* Subtle gradient overlay */}
@@ -167,29 +149,10 @@ export default function Login() {
                                         }`}>
                                             Password
                                         </label>
-                                        {!isSignUp && (
-                                            <button 
-                                                type="button"
-                                                className="absolute right-4 top-4 text-sm text-slate-500 hover:text-slate-700 font-medium transition-colors duration-200"
-                                            >
-                                                Forgot?
-                                            </button>
-                                        )}
                                     </div>
                                     
-                                    {/* Terms/Remember - More elegant */}
-                                    {!isSignUp ? (
-                                        <div className="flex items-center space-x-3">
-                                            <input 
-                                                type="checkbox" 
-                                                id="remember" 
-                                                className="w-4 h-4 text-slate-600 border-slate-300 rounded focus:ring-slate-500/20 focus:ring-2"
-                                            />
-                                            <label htmlFor="remember" className="text-sm text-slate-600 font-light">
-                                                Keep me signed in
-                                            </label>
-                                        </div>
-                                    ) : (
+                                    {/* Terms/Remember */}
+                                    {isSignUp &&
                                         <div className="text-sm text-slate-500 font-light leading-relaxed">
                                             By creating an account, you agree to our{' '}
                                             <a href="#" className="text-slate-700 hover:text-slate-900 font-medium underline underline-offset-2">
@@ -200,9 +163,9 @@ export default function Login() {
                                                 Privacy Policy
                                             </a>
                                         </div>
-                                    )}
+                                    }
                                     
-                                    {/* Premium submit button */}
+                                    {/* Submit button */}
                                     <button 
                                         type="submit"
                                         disabled={loading}
@@ -220,8 +183,7 @@ export default function Login() {
                                             </span>
                                         )}
                                     </button>
-                                    
-                                    {/* Refined divider */}
+                                
                                     <div className="relative my-8">
                                         <div className="absolute inset-0 flex items-center">
                                             <div className="w-full border-t border-slate-200"></div>
@@ -233,7 +195,7 @@ export default function Login() {
                                         </div>
                                     </div>
                                     
-                                    {/* Elegant Google button */}
+                                    {/* Google button */}
                                     <button 
                                         type="button"
                                         onClick={handleGoogleLogin}
@@ -244,7 +206,7 @@ export default function Login() {
                                         <span className="font-light tracking-wide">Continue with Google</span>
                                     </button>
                                     
-                                    {/* Refined mode toggle */}
+                                    {/* Toggle sign in/up */}
                                     <div className="text-center pt-6">
                                         <p className="text-slate-500 font-light">
                                             {isSignUp ? 'Already have an account?' : 'New to WebNote?'}
