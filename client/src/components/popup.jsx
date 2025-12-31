@@ -6,7 +6,7 @@ import { MdOutlineToken } from 'react-icons/md';
 import './popup.css';
 
 function Popup() {
-  const notify = () => toast('🦄 Wow so easy!', {
+  const notify = () => toast('', {
     icon:  <MdOutlineToken/>,
   });
 

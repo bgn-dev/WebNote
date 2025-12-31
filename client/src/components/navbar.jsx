@@ -18,24 +18,6 @@ export default function Navbar({ collabToggle, setCollabToggle }) {
 
     const [showDropdown, setShowDropdown] = useState(false);
 
-    const group_toast = (text) => toast(text, {
-        icon: <BiGroup />,
-        autoClose: 250,
-        newestOnTop: true,
-        closeOnClick: true,
-        pauseOnHover: false,
-        draggable: false,
-        progress: undefined,
-    });
-
-    function grop_toast_string() {
-        if (collabToggle) {
-            group_toast("Collaborative mode off");
-        } else {
-            group_toast("Collaborative mode on");
-        }
-    }
-
     useEffect(() => {
         localStorage.setItem("collabToggle", JSON.stringify(collabToggle));
     }, [collabToggle]);
@@ -86,7 +68,7 @@ export default function Navbar({ collabToggle, setCollabToggle }) {
                     {/* Desktop Actions */}
                     <div className="hidden md:flex items-center space-x-3">
                         <button
-                            onClick={() => { collabsToggle(); grop_toast_string() }}
+                            onClick={() => { collabsToggle() }}
                             className={`px-4 py-3 rounded-xl transition-all duration-300 font-medium ${collabToggle
                                     ? 'bg-blue-100 text-blue-700 hover:bg-blue-200 shadow-sm'
                                     : 'text-slate-700 hover:text-slate-900 hover:bg-slate-100'
