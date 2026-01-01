@@ -31,4 +31,4 @@ jobs:
       - name: Build Docker image
         working-directory: ./server
         run: |
-          gcloud builds submit --tag gcr.io/***REMOVED***/webnote:pr-${{ github.event.number }}
+          gcloud builds submit --tag gcr.io/${{ vars.GCP_PROJECT_ID }}/webnote:pr-${{ github.event.number }}

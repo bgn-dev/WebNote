@@ -28,13 +28,16 @@ jobs:
       - name: Build and push Docker image
         working-directory: ./server
         run: |
-          gcloud builds submit --tag gcr.io/***REMOVED***/webnote
+          gcloud builds submit --tag gcr.io/${{ vars.GCP_PROJECT_ID }}/webnote
 
       - name: Deploy to Cloud Run
         run: |
           gcloud run deploy webnote \
-            --image gcr.io/***REMOVED***/webnote \
+            --image gcr.io/${{ vars.GCP_PROJECT_ID }}/webnote \
             --region europe-west3 \
             --allow-unauthenticated \
             --set-env-vars FLASK_SECRET_KEY=${{ secrets.FLASK_SECRET_KEY }} \
-            --set-env-vars FLASK_DEBUG=false
+            --set-env-vars FLASK_DEBUG=false \
+            --set-env-vars FLASK_HOST=0.0.0.0 \
+            --timeout=3600 \
+            --session-affinity
