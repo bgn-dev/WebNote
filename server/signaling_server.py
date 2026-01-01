@@ -101,9 +101,10 @@ def handle_disconnect():
             break
 
 if __name__ == "__main__":
-    host = os.environ.get('FLASK_HOST', '127.0.0.1')
-    port = int(os.environ.get('FLASK_PORT', 9000))
+    host = os.environ.get('FLASK_HOST', '0.0.0.0')
+    # Cloud Run uses PORT env var, fallback to FLASK_PORT or 9000 for local dev
+    port = int(os.environ.get('PORT', os.environ.get('FLASK_PORT', 9000)))
     debug = os.environ.get('FLASK_DEBUG', 'True').lower() in ['true', '1', 'yes']
-    
+
     print(f"Starting Flask-SocketIO server on {host}:{port}")
     socketio.run(app, host=host, port=port, debug=debug)
