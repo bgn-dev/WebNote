@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from "react-router-dom";
 
-import { firestore } from '../firebase/config';
+import { firestore } from '../../firebase/config';
 import { collection, onSnapshot, deleteDoc, doc, updateDoc, getDocs, getDoc, setDoc } from "@firebase/firestore"
 
-import Navbar from './navbar';
-import { useAuth } from '../firebase/auth';
+import Navbar from '../layout/navbar';
+import { useAuth } from '../../firebase/auth';
 
 import { MdOutlineDeleteForever } from 'react-icons/md';
 import { LuFilePlus } from 'react-icons/lu';
@@ -115,6 +115,7 @@ export default function Grid() {
     };
 
     const handleNote = (ID, title) => {
+        // State variables are attached to the location object of the destinated route 
         navigate(`/note/${ID}`, { 
             state: { 
                 noteTitle: title 

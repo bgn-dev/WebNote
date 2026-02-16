@@ -3,7 +3,7 @@
  * Tests text-level abstractions: indexing, cursor positioning, and text utilities
  */
 
-import PeritextDocument from '../../../components/crdt/peritext-document';
+import PeritextDocument from '../../../features/collaboration/lib/crdt/peritext-document';
 
 describe('PeritextDocument - Text Operations', () => {
   test('getTextIndexForOperation returns correct position', () => {
@@ -129,40 +129,42 @@ describe('PeritextDocument - Text Operations', () => {
     expect(doc1.getText()).toBe('Hello');
     expect(doc2.getText()).toBe('Hello');
     
-    // User1 inserts " World" at the end
+    // FIXED: User1 inserts " World" at the end - capture actual opIds
     let currentLeftId = leftOpId2;
     const worldOps = [];
     for (let i = 0; i < ' World'.length; i++) {
       const char = ' World'[i];
-      const opId = `${i + 1}@user1`;
-      
-      doc1.insert(char, currentLeftId);
-      
+
+      // Get the actual opId from insert
+      const actualOpId = doc1.insert(char, currentLeftId);
+      const node = doc1.characters.get(actualOpId);
+
       const op = {
         action: 'insert',
-        opId: opId,
+        opId: actualOpId,
         char: char,
         leftId: currentLeftId,
-        userId: 'user1',
-        counter: i + 1,
-        timestamp: Date.now() + i
+        userId: node.userId,
+        counter: node.counter,
+        timestamp: node.timestamp
       };
       worldOps.push(op);
-      currentLeftId = opId;
+      currentLeftId = actualOpId;
     }
     
-    // User2 inserts "!" at the end (before seeing User1's changes)
+    // FIXED: User2 inserts "!" at the end (before seeing User1's changes)
+    const exclamationOpId = doc2.insert('!', leftOpId2);
+    const exclamationNode = doc2.characters.get(exclamationOpId);
+
     const exclamationOp = {
       action: 'insert',
-      opId: '1@user2',
+      opId: exclamationOpId,
       char: '!',
       leftId: leftOpId2, // At end of "Hello"
-      userId: 'user2',
-      counter: 1,
-      timestamp: Date.now()
+      userId: exclamationNode.userId,
+      counter: exclamationNode.counter,
+      timestamp: exclamationNode.timestamp
     };
-    
-    doc2.insert('!', leftOpId2);
     
     expect(doc1.getText()).toBe('Hello World');
     expect(doc2.getText()).toBe('Hello!');
@@ -170,7 +172,13 @@ describe('PeritextDocument - Text Operations', () => {
     // Apply remote operations
     worldOps.forEach(op => doc2.applyOperation(op));
     doc1.applyOperation(exclamationOp);
-    
+
+    // Debug: show what counters we have
+    console.log('World ops:', worldOps.map(op => `"${op.char}":c${op.counter}`).join(', '));
+    console.log('Exclamation op:', `"${exclamationOp.char}":c${exclamationOp.counter}`);
+    console.log('Doc1 final:', doc1.getText());
+    console.log('Doc2 final:', doc2.getText());
+
     // Both should converge
     expect(doc1.getText()).toBe(doc2.getText());
     

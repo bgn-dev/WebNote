@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react';
 import { BsPersonPlus } from 'react-icons/bs';
 import { MdOutlineClose } from 'react-icons/md';
 
-import { showToast } from '../common/toast';
-import { isValidEmail } from '../../utils/validation';
-import { firestore } from '../../firebase/config';
+import { showToast } from '../../../components/common/toast';
+import { isValidEmail } from '../../../utils/email-validation';
+import { firestore } from '../../../firebase/config';
 import { updateDoc, getDoc, doc, arrayUnion } from "@firebase/firestore";
 
 /**

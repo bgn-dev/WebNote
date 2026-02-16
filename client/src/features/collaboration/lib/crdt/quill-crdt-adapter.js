@@ -127,18 +127,23 @@ export const generateOperationsFromQuillDelta = (delta, rgaDocument) => {
       
       for (let i = 0; i < text.length; i++) {
         const char = text[i];
-        
+
         console.log(`[SENDER] ${char}: leftOpId=${leftOpId}`);
-        
+
         // Use proper CRDT insert method
         const actualOpId = rgaDocument.insert(char, leftOpId);
         console.log(`[SENDER] After insert: "${rgaDocument.getText()}" (opId: ${actualOpId})`);
-        
-        // Create operation for broadcasting with the actual opId
+
+        // Get the inserted character node to retrieve originRight
+        const insertedNode = rgaDocument.characters.get(actualOpId);
+        const originRight = insertedNode ? insertedNode.originRight : null;
+
+        // Create operation for broadcasting with originRight (YATA)
         const operation = rgaDocument.createOperation('insert', {
           opId: actualOpId,
           char,
-          leftId: leftOpId
+          leftId: leftOpId,
+          rightId: originRight  // YATA: include originRight for remote application
         });
         operations.push(operation);
         leftOpId = actualOpId;

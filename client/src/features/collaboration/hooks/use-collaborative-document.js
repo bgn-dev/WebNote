@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import socketio from "socket.io-client";
 
-import WebRTCManager from '../components/webrtc/webrtc-manager';
-import PeritextDocument from '../components/crdt/peritext-document';
-import { 
-  generateOperationsFromQuillDelta, 
-  generateFormattingOperations, 
-  adjustCursorForOperation 
-} from '../utils/crdt-operations';
+import WebRTCManager from '../lib/webrtc/webrtc-manager';
+import PeritextDocument from '../lib/crdt/peritext-document';
+import {
+  generateOperationsFromQuillDelta,
+  generateFormattingOperations,
+  adjustCursorForOperation
+} from '../lib/crdt/quill-crdt-adapter';
 
 /**
  * Custom hook for managing collaborative document editing

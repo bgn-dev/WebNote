@@ -2,26 +2,26 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { TfiBackLeft } from 'react-icons/tfi';
 
-import { firestore } from '../firebase/config';
+import { firestore } from '../../firebase/config';
 import { updateDoc, doc } from "@firebase/firestore";
-import { useAuth } from '../firebase/auth';
+import { useAuth } from '../../firebase/auth';
 
 // Custom hooks
-import { useCollaborativeDocument } from '../hooks/use-collaborative-document';
-import { useDocumentPersistence } from '../hooks/use-document-persistence';
+import { useCollaborativeDocument } from '../../features/collaboration/hooks/use-collaborative-document';
+//import { useDocumentPersistence } from '../../hooks/use-document-persistence';
 
 // Components
-import CollaborationHeader from './note/collaboration-header';
-import CollaboratorInviteDialog from './note/collaborator-invite-dialog';
-import DocumentEditor from './note/document-editor';
-import SaveStatusIndicator from './note/save-status-indicator';
+import CollaborationHeader from '../../features/collaboration/components/collaboration-header';
+import CollaboratorInviteDialog from '../../features/collaboration/components/collaborator-invite-dialog';
+import DocumentEditor from './document-editor';
+//import SaveStatusIndicator from './save-status-indicator';
 
 
 /**
- * NoteApp - Main collaborative document editor component
+ * Note - Main collaborative document editor component
  * Orchestrates real-time collaboration, document persistence, and UI components
  */
-export default function NoteApp() {
+export default function Note() {
   const navigate = useNavigate();
   const location = useLocation();
   const { noteID } = useParams();
@@ -30,11 +30,11 @@ export default function NoteApp() {
   const [showInvitePopup, setShowInvitePopup] = useState(false);
   const [noteTitle, setNoteTitle] = useState(location.state && location.state.noteTitle);
 
-  // Initialize collaborative document (without auto-save callback for now)
+  // Initialize collaborative document
   const collaborative = useCollaborativeDocument(noteID, user);
 
   // Initialize document persistence
-  const persistence = useDocumentPersistence(
+  /* const persistence = useDocumentPersistence(
     collaborative.rgaDoc,
     noteID,
     user,
@@ -49,10 +49,7 @@ export default function NoteApp() {
     if (persistence.debouncedSave) {
       collaborative.setOnDocumentChange(persistence.debouncedSave);
     }
-  }, [collaborative.setOnDocumentChange, persistence.debouncedSave]);
-
-
-
+  }, [collaborative.setOnDocumentChange, persistence.debouncedSave]); */
 
 
   const handleGoBack = () => {
@@ -67,7 +64,7 @@ export default function NoteApp() {
         title: newNoteTitle,
       });
     } catch (error) {
-      console.error("Error updating document: ", error);
+      console.error("Error updating document title: ", error);
     }
   };
 
@@ -130,7 +127,7 @@ export default function NoteApp() {
       />
 
       {/* Floating Save Status */}
-      <SaveStatusIndicator saveStatus={persistence.saveStatus} />
+      {/* <SaveStatusIndicator saveStatus={persistence.saveStatus} /> */}
     </div>
   );
 }

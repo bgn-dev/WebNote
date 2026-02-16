@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../firebase/auth';
+import { useAuth } from '../../firebase/auth';
 import { FcGoogle } from "react-icons/fc";
 
 export default function Login() {

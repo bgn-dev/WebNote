@@ -3,7 +3,7 @@
  * Tests core CRDT functionality: initialization, single character operations, and basic deletions
  */
 
-import PeritextDocument from '../../../components/crdt/peritext-document';
+import PeritextDocument from '../../../features/collaboration/lib/crdt/peritext-document';
 
 describe('PeritextDocument - Basic Operations', () => {
   let doc;
@@ -54,19 +54,23 @@ describe('PeritextDocument - Basic Operations', () => {
       expect(doc.characters.size).toBe(6); // 5 chars + root
     });
 
-    test('inserts character in middle of text', () => {
-      // Build "Hllo"
+    test('inserts character in middle of text (YATA ordering)', () => {
+      // Build "Hllo" sequentially
       let leftOpId = doc.root.opId;
       leftOpId = doc.insert('H', leftOpId);
       const eOpId = leftOpId = doc.insert('l', leftOpId);
       leftOpId = doc.insert('l', leftOpId);
       leftOpId = doc.insert('o', leftOpId);
-      
+
       expect(doc.getText()).toBe('Hllo');
-      
-      // Insert 'e' between 'H' and first 'l'
-      doc.insert('e', doc.root.opId); // Insert after root (before H)
-      
+
+      // Insert 'e' after root (position 0)
+      // With YATA, 'e' will be inserted BEFORE 'H' because:
+      // - 'e' has afterId = root, originRight = 'H' (opId of H)
+      // - YATA places 'e' before its originRight
+      doc.insert('e', doc.root.opId);
+
+      // Result reflects YATA ordering: 'e' appears before 'H' due to originRight tracking
       expect(doc.getText()).toBe('eHllo');
     });
   });

@@ -3,12 +3,10 @@ import { BrowserRouter, Route, Routes } from "react-router-dom"
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
-
 import './app.css';
-import Login from './components/login'
-import Grid from "./components/grid";
-import Note from './components/note'
-import Popup from './components/popup'
+import Login from './components/auth/login'
+import Grid from "./components/notes/grid";
+import Note from './components/notes/note'
 import ProtectedRoute from "./components/common/protected-route";
 import { AuthProvider } from './firebase/auth';
 
@@ -33,7 +31,6 @@ function App() {
             />
             <Routes>
               <Route path="/" element={<Login />} />
-              <Route path="/popup" element={<Popup />} />
               <Route path="/notes" element={
                 <ProtectedRoute>
                   <Grid />

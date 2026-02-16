@@ -3,7 +3,7 @@
  * These tests show what the implementation should do vs what it currently does
  */
 
-import PeritextDocument from '../../../components/crdt/peritext-document';
+import PeritextDocument from '../../../features/collaboration/lib/crdt/peritext-document';
 
 describe('CRDT Implementation Fixes Needed', () => {
   

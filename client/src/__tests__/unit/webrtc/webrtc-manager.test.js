@@ -3,7 +3,7 @@
  * Tests peer connection management, signaling, and message passing
  */
 
-import WebRTCManager from '../../../components/webrtc/webrtc-manager';
+import WebRTCManager from '../../../features/collaboration/lib/webrtc/webrtc-manager';
 import { 
   MockSocketIOClient, 
   MockWebRTCNetwork, 

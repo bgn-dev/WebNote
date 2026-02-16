@@ -3,7 +3,7 @@
  * These tests will pass once the convergence issues are fixed
  */
 
-import PeritextDocument from '../../../components/crdt/peritext-document';
+import PeritextDocument from '../../../features/collaboration/lib/crdt/peritext-document';
 
 describe('CRDT Property Validation (Will Pass After Fix)', () => {
   

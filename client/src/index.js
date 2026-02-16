@@ -1,4 +1,4 @@
-import './utils/env-validation';
+import './utils/environment-validation';
 
 import React from 'react';
 import ReactDOM from 'react-dom/client';

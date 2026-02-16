@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from "react-router-dom";
 
-import { useAuth } from '../firebase/auth';
+import { useAuth } from '../../firebase/auth';
 
 import { PiSignOutBold } from 'react-icons/pi';
 import { BiGroup, BiUser } from 'react-icons/bi';

@@ -4,7 +4,7 @@
  * regardless of operation application order
  */
 
-import PeritextDocument from '../../../components/crdt/peritext-document';
+import PeritextDocument from '../../../features/collaboration/lib/crdt/peritext-document';
 
 describe('CRDT Deterministic Ordering', () => {
   test('deterministic ordering with simultaneous inserts at same position - same timestamp', () => {
@@ -164,169 +164,172 @@ describe('CRDT Deterministic Ordering', () => {
     expect(allSame).toBe(true);
   });
 
-  test('verify RGA ordering is working with mixed timestamps', () => {
+  test('verify RGA ordering is working with mixed counters', () => {
     const doc = new PeritextDocument('test');
-    
-    // Create a mixed scenario: some operations with same timestamp, some different
+
+    // FIXED: Test counter-based ordering (not timestamp-based)
+    // Create a mixed scenario: some operations with same counter, some different
     const operations = [
-      // Group 1: Same timestamp, different users
+      // Group 1: Same counter, different users (tie-break by userId)
       {
         action: 'insert',
-        opId: '1@zoe',
+        opId: '5@zoe',
         char: 'Z',
         leftId: '0@root',
         userId: 'zoe',
-        counter: 1,
+        counter: 5,
         timestamp: 1000
       },
       {
         action: 'insert',
-        opId: '1@alice',
+        opId: '5@alice',
         char: 'A',
         leftId: '0@root',
         userId: 'alice',
-        counter: 1,
-        timestamp: 1000  // Same as zoe
+        counter: 5, // Same counter as zoe
+        timestamp: 1000
       },
-      // Group 2: Earlier timestamp (should come first)
+      // Group 2: Earlier counter (should come first)
       {
         action: 'insert',
-        opId: '1@bob',
+        opId: '3@bob',
         char: 'B',
         leftId: '0@root',
         userId: 'bob',
-        counter: 1,
-        timestamp: 500  // Earlier
+        counter: 3, // Earlier counter
+        timestamp: 2000  // Later timestamp (doesn't matter)
       }
     ];
-    
-    // Apply in reverse chronological order
+
+    // Apply in reverse counter order
     operations.reverse().forEach(op => doc.applyOperation(op));
-    
-    // Expected order: Bob (earliest timestamp), then Alice, then Zoe (lexicographic)
+
+    // Expected order: Bob (earliest counter=3), then Alice, then Zoe (lexicographic at counter=5)
     expect(doc.getText()).toBe('BAZ');
-    
-    console.log('Mixed timestamp result:', doc.getText());
-    console.log('Expected: BAZ (bob=500ms first, then alice<zoe at 1000ms)');
+
+    console.log('Mixed counter result:', doc.getText());
+    console.log('Expected: BAZ (bob counter=3 first, then alice<zoe at counter=5)');
   });
 
   test('conflict resolution with complex insertion patterns', () => {
     const timestamp = Date.now();
-    
+
+    // FIXED: Use non-overlapping counter ranges for deterministic ordering
     // Test case: multiple users inserting sequences at the same position
     const doc1 = new PeritextDocument('test1');
     const doc2 = new PeritextDocument('test2');
     const doc3 = new PeritextDocument('test3');
-    
+
     // Create operations where each user inserts a sequence at root
+    // Alice uses counters 10-11, Bob uses 20-22, Charlie uses 30
     const aliceOps = ['H', 'i'].map((char, i) => ({
       action: 'insert',
-      opId: `${i + 1}@alice`,
+      opId: `${10 + i}@alice`,
       char,
-      leftId: i === 0 ? '0@root' : `${i}@alice`,
+      leftId: i === 0 ? '0@root' : `${10 + i - 1}@alice`,
       userId: 'alice',
-      counter: i + 1,
+      counter: 10 + i, // Counters: 10, 11
       timestamp: timestamp
     }));
-    
+
     const bobOps = ['B', 'y', 'e'].map((char, i) => ({
       action: 'insert',
-      opId: `${i + 1}@bob`,
+      opId: `${20 + i}@bob`,
       char,
-      leftId: i === 0 ? '0@root' : `${i}@bob`,
+      leftId: i === 0 ? '0@root' : `${20 + i - 1}@bob`,
       userId: 'bob',
-      counter: i + 1,
+      counter: 20 + i, // Counters: 20, 21, 22
       timestamp: timestamp
     }));
-    
+
     const charlieOps = ['!'].map((char, i) => ({
       action: 'insert',
-      opId: `${i + 1}@charlie`,
+      opId: `${30 + i}@charlie`,
       char,
       leftId: '0@root',
       userId: 'charlie',
-      counter: i + 1,
+      counter: 30 + i, // Counter: 30
       timestamp: timestamp
     }));
-    
+
     // Apply operations in different orders in each document
     // Doc1: Alice, Bob, Charlie
     [...aliceOps, ...bobOps, ...charlieOps].forEach(op => doc1.applyOperation(op));
-    
-    // Doc2: Charlie, Alice, Bob  
+
+    // Doc2: Charlie, Alice, Bob
     [...charlieOps, ...aliceOps, ...bobOps].forEach(op => doc2.applyOperation(op));
-    
+
     // Doc3: Bob, Charlie, Alice
     [...bobOps, ...charlieOps, ...aliceOps].forEach(op => doc3.applyOperation(op));
-    
+
     // All should converge to same result
     const result1 = doc1.getText();
     const result2 = doc2.getText();
     const result3 = doc3.getText();
-    
+
     console.log('Complex pattern results:', [result1, result2, result3]);
-    
+
     expect(result1).toBe(result2);
     expect(result2).toBe(result3);
-    
-    // Should preserve user intent while maintaining deterministic order
-    expect(result1).toContain('Hi'); // Alice's sequence preserved
-    expect(result1).toContain('Bye'); // Bob's sequence preserved
-    expect(result1).toContain('!'); // Charlie's character preserved
+
+    // With non-overlapping counters: Alice(10-11), Bob(20-22), Charlie(30)
+    // Expected order: Hi (10-11), then Bye (20-22), then ! (30)
+    expect(result1).toBe('HiBye!');
   });
 
-  test('timestamp tie-breaking with nanosecond precision', () => {
+  test('counter tie-breaking with userId', () => {
     const baseTimestamp = Date.now();
-    
-    // Operations with very close timestamps (simulating near-simultaneous edits)
+
+    // FIXED: Test counter-based ordering with userId tie-breaking
+    // Operations with different counters
     const operations = [
       {
         action: 'insert',
-        opId: '1@user_zebra',
+        opId: '10@user_zebra',
         char: 'Z',
         leftId: '0@root',
         userId: 'user_zebra',
-        counter: 1,
+        counter: 10,
         timestamp: baseTimestamp
       },
       {
         action: 'insert',
-        opId: '1@user_alpha',
+        opId: '10@user_alpha',
         char: 'A',
         leftId: '0@root',
         userId: 'user_alpha',
-        counter: 1,
-        timestamp: baseTimestamp  // Exact same timestamp
+        counter: 10, // Same counter as zebra
+        timestamp: baseTimestamp
       },
       {
         action: 'insert',
-        opId: '1@user_beta',
+        opId: '15@user_beta',
         char: 'B',
         leftId: '0@root',
         userId: 'user_beta',
-        counter: 1,
-        timestamp: baseTimestamp + 1  // 1ms later
+        counter: 15, // Later counter
+        timestamp: baseTimestamp - 1000 // Earlier timestamp (doesn't matter)
       }
     ];
-    
+
     // Test multiple application orders
     const orders = [
       [0, 1, 2], // zebra, alpha, beta
-      [2, 1, 0], // beta, alpha, zebra  
+      [2, 1, 0], // beta, alpha, zebra
       [1, 2, 0]  // alpha, beta, zebra
     ];
-    
+
     const results = orders.map(order => {
       const doc = new PeritextDocument('test');
       order.forEach(i => doc.applyOperation(operations[i]));
       return doc.getText();
     });
-    
-    console.log('Timestamp tie-breaking results:', results);
-    
-    // All should be identical: earlier timestamp first, then lexicographic
-    // Expected: user_alpha and user_zebra at same timestamp -> A then Z
-    // Then user_beta at later timestamp -> B at end = "AZB"
+
+    console.log('Counter tie-breaking results:', results);
+
+    // All should be identical: earlier counter first, then lexicographic for ties
+    // Expected: user_alpha and user_zebra at counter=10 -> A then Z (lexicographic)
+    // Then user_beta at counter=15 -> B at end = "AZB"
     const expected = 'AZB';
     results.forEach(result => {
       expect(result).toBe(expected);

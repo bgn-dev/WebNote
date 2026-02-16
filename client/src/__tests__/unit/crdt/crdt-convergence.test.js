@@ -3,7 +3,7 @@
  * These tests help diagnose problems found in basic tests
  */
 
-import PeritextDocument from '../../../components/crdt/peritext-document';
+import PeritextDocument from '../../../features/collaboration/lib/crdt/peritext-document';
 
 describe('CRDT Convergence Analysis', () => {
   describe('Deterministic Ordering Investigation', () => {

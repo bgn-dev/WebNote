@@ -29,20 +29,20 @@ class WebRTCManager {
         if (WebRTCManager.instance) {
             WebRTCManager.instance.cleanup();
         }
-        const instance = new WebRTCManager(socket, onMessage, onPeerConnected, onPeerDisconnected);
-        instance.localPeerId = socket.id;
-        WebRTCManager.instance = instance;
+        WebRTCManager.instance = new WebRTCManager(socket, onMessage, onPeerConnected, onPeerDisconnected);
         return WebRTCManager.instance;
     }
 
     setUserInfo(username, room) {
         this.localUsername = username;
         this.roomName = room;
-        if (this.socket) {
-            this.localPeerId = this.socket.id;
-        }
     }
 
+    /**
+     * Ensure deterministic peer connection establishment
+     * @param {*} remotePeerId 
+     * @returns {boolean}
+     */
     shouldInitiateConnection(remotePeerId) {
         const shouldInitiate = this.localPeerId < remotePeerId;
         console.log(`Deterministic check: "${this.localPeerId}" < "${remotePeerId}" = ${shouldInitiate}`);
